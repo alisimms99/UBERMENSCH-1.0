@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
+import EnhancedWorkoutSession from './components/EnhancedWorkoutSession'
 import { motion, AnimatePresence } from 'framer-motion'
 import './App.css'
 
@@ -110,6 +111,7 @@ function App() {
         <AnimatePresence mode="wait">
           <Routes>
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/workout/session/:templateId" element={<EnhancedWorkoutSession />} />
             <Route 
               path="/dashboard" 
               element={

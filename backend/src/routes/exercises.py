@@ -1,5 +1,5 @@
 from flask import Blueprint, jsonify, request
-from ..models.workout_templates import Exercise, WorkoutTemplate, db
+from ..models import db, Exercise, WorkoutTemplate  # Updated import
 import json
 
 exercises_bp = Blueprint('exercises', __name__)

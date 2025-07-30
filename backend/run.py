@@ -2,12 +2,11 @@ import os
 import argparse
 import sys
 
-# Set up Python path
+# Ensure Python can find your modules
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), 'src')))
 
 from src.main import create_app
-from src.models import db
+from src.models import db  # This import will now work
 from src.data.seed_video_library import seed_video_library
 from src.data.enhanced_seed_templates import create_enhanced_exercises, create_enhanced_workout_templates
 

@@ -1,20 +1,24 @@
 import os
 from flask import Flask
 from flask_cors import CORS
-from .models import db  # Relative import works when run as package
+from .models import db
 
 def create_app():
     app = Flask(__name__)
-    CORS(app)
     
-    # Database config
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database/app.db'
+    # Database configuration (FIXED)
+    basedir = os.path.abspath(os.path.dirname(__file__))  # THIS WAS MISSING
+    database_path = os.path.join(basedir, 'database', 'app.db')
+    os.makedirs(os.path.dirname(database_path), exist_ok=True)  # Ensure directory exists
+    
+    app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{database_path}'
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    app.config['VIDEO_ROOT_PATH'] = os.environ.get('VIDEO_ROOT_PATH')
     
     db.init_app(app)
     
-    # Import blueprints within app context
     with app.app_context():
+        # Import blueprints
         from .routes.user import user_bp
         from .routes.workouts import workouts_bp
         from .routes.progress import progress_bp
@@ -23,6 +27,7 @@ def create_app():
         from .routes.templates import templates_bp
         from .routes.video_server import video_bp
         
+        # Register blueprints
         app.register_blueprint(user_bp, url_prefix='/api')
         app.register_blueprint(workouts_bp, url_prefix='/api')
         app.register_blueprint(progress_bp, url_prefix='/api')
@@ -30,5 +35,9 @@ def create_app():
         app.register_blueprint(data_management_bp, url_prefix='/api')
         app.register_blueprint(templates_bp, url_prefix='/api')
         app.register_blueprint(video_bp)
+        # Initialize CORS after registering blueprints
+        CORS(app)
         
+        db.create_all()  # Create tables if they don't exist
+    
     return app

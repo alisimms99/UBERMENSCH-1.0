@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { 
   Play, 
@@ -21,15 +21,27 @@ import { Badge } from '@/components/ui/badge'
 import { apiService } from '../lib/api_simple'
 
 export default function Dashboard({ user }) {
+  const navigate = useNavigate()
+  const handleStartWorkout = (templateId) => navigate(`/workout/session/${templateId}`)
   const [todayProgress, setTodayProgress] = useState(null)
   const [todayWorkout, setTodayWorkout] = useState(null)
   const [workoutStats, setWorkoutStats] = useState(null)
   const [recentAchievements, setRecentAchievements] = useState([])
   const [loading, setLoading] = useState(true)
+  const [templates, setTemplates] = useState([])
+  const [templatesLoading, setTemplatesLoading] = useState(true)
+  const [templatesError, setTemplatesError] = useState(null)
 
   useEffect(() => {
     loadDashboardData()
   }, [user])
+  useEffect(() => {
+    setTemplatesLoading(true)
+    apiService.getWorkoutTemplates()
+      .then(data => setTemplates(data))
+      .catch(error => setTemplatesError(error.message || 'Failed to load templates'))
+      .finally(() => setTemplatesLoading(false))
+  }, [])
 
   const loadDashboardData = async () => {
     try {
@@ -291,16 +303,26 @@ export default function Dashboard({ user }) {
                 </div>
               ) : (
                 <div className="text-center py-8">
-                  <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Plus className="w-8 h-8 text-muted-foreground" />
-                  </div>
-                  <h3 className="font-semibold text-foreground mb-2">No workout planned</h3>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Let's create a workout for today!
-                  </p>
-                  <Button onClick={generateTodayWorkout}>
-                    Generate Today's Workout
-                  </Button>
+                  {templatesLoading ? (
+                    <p>Loading templates...</p>
+                  ) : templatesError ? (
+                    <p className="text-red-500">{templatesError}</p>
+                  ) : (
+                    templates.map(template => (
+                      <div key={template.id} className="mb-4">
+                        <h3 className="font-semibold text-foreground">{template.name}</h3>
+                        <p className="text-sm text-muted-foreground">
+                          Difficulty: {template.difficulty}, Duration: {template.duration_minutes} min
+                        </p>
+                        <button
+                          onClick={() => handleStartWorkout(template.id)}
+                          className="px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90"
+                        >
+                          Start Workout
+                        </button>
+                      </div>
+                    ))
+                  )}
                 </div>
               )}
             </CardContent>

@@ -1,5 +1,5 @@
 from flask import Blueprint, jsonify, request
-from ..models.user import ProgressEntry, Achievement, UserAchievement, User, db
+from ..models import db, ProgressEntry, Achievement, UserAchievement
 from datetime import datetime, date, timedelta
 from sqlalchemy import func
 import json

@@ -1,4 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useParams } from 'react-router-dom';
+import { apiService } from '../lib/api_simple';
+import VideoPlayer from './VideoPlayer';
 import { 
   Play, 
   Pause, 
@@ -17,8 +20,13 @@ import {
 import { WorkoutExerciseImage } from './ExerciseImage';
 
 const EnhancedWorkoutSession = ({ template, user, onComplete, onCancel }) => {
+  const { templateId } = useParams();
+  const [sessionData, setSessionData] = useState(null);
+  const [sessionLoading, setSessionLoading] = useState(true);
+  const [sessionError, setSessionError] = useState(null);
+  const [sessionPhaseIndex, setSessionPhaseIndex] = useState(0);
+  const [sessionExerciseIndex, setSessionExerciseIndex] = useState(0);
   const [exercises, setExercises] = useState([]);
-  const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0);
   const [sessionStartTime, setSessionStartTime] = useState(null);
   const [sessionNotes, setSessionNotes] = useState('');
   const [energyBefore, setEnergyBefore] = useState(3);
@@ -35,6 +43,14 @@ const EnhancedWorkoutSession = ({ template, user, onComplete, onCancel }) => {
     initializeExercises();
     setSessionStartTime(new Date());
   }, [template, user]);
+  
+  useEffect(() => {
+    setSessionLoading(true);
+    apiService.getWorkoutSession(templateId)
+      .then(data => setSessionData(data))
+      .catch(err => setSessionError(err.message || 'Failed to load session'))
+      .finally(() => setSessionLoading(false));
+  }, [templateId]);
 
   useEffect(() => {
     if (timerActive && timerSeconds > 0) {
@@ -203,17 +219,82 @@ const EnhancedWorkoutSession = ({ template, user, onComplete, onCancel }) => {
     onComplete(workoutData);
   };
 
-  const currentExercise = exercises[currentExerciseIndex];
+  const currentExercise = exercises[sessionExerciseIndex];
+  // Determine active session exercise with session data
+  const activeExercise = sessionData?.phases?.[sessionPhaseIndex]?.exercises?.[sessionExerciseIndex];
   const completionPercentage = getCompletionPercentage();
 
   return (
     <div className="max-w-4xl mx-auto p-6">
+      {sessionLoading ? (
+        <p>Loading workout session...</p>
+      ) : sessionError ? (
+        <p className="text-red-500">{sessionError}</p>
+      ) : (
+        <>
+          <h1 className="text-2xl font-bold mb-2">{sessionData?.name}</h1>
+          <p className="text-sm text-muted-foreground mb-4">{sessionData?.description}</p>
+          {activeExercise?.video_id && (
+            <div className="mb-6">
+              <VideoPlayer
+                video={{ id: activeExercise.video_id }}
+                exerciseContext={activeExercise}
+                autoPlay={false}
+                showControls={true}
+                className="w-full h-auto"
+              />
+            </div>
+          )}
+          {sessionData?.phases?.map((phase, pIdx) => (
+            <div key={pIdx} className="mb-6">
+              <h2 className="text-xl font-semibold mb-2">{phase.name}</h2>
+              {phase.exercises.map(ex => (
+                <div key={ex.id} className="flex items-start space-x-4 mb-4">
+                  <WorkoutExerciseImage exercise={ex} className="w-16 h-16" />
+                  <div className="flex-grow">
+                    <div className="flex items-center space-x-2 mb-1">
+                      <input type="checkbox" />
+                      <span className="font-medium">{ex.name}</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      {ex.reps ? `${ex.reps} reps` : ''}{ex.duration_seconds ? ` ${ex.duration_seconds}s` : ''}
+                    </p>
+                    <div className="mt-2 flex space-x-2">
+                      <button className="px-2 py-1 bg-gray-200 rounded">Skip</button>
+                      <button className="px-2 py-1 bg-blue-200 rounded">Add Extra Set</button>
+                    </div>
+                    <textarea placeholder="Notes..." className="w-full mt-2 p-2 border rounded h-16" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ))}
+          <div className="flex justify-between mt-4">
+            <button
+              onClick={() => setSessionExerciseIndex(i => Math.max(0, i - 1))}
+              disabled={sessionExerciseIndex === 0}
+              className="px-4 py-2 bg-gray-200 rounded disabled:opacity-50"
+            >
+              Previous Exercise
+            </button>
+            <button
+              onClick={() => setSessionExerciseIndex(i => Math.min(
+                sessionData?.phases?.[sessionPhaseIndex]?.exercises?.length - 1 || 0, i + 1
+              ))}
+              disabled={sessionExerciseIndex >= sessionData?.phases?.[sessionPhaseIndex]?.exercises?.length - 1 || false}
+              className="px-4 py-2 bg-gray-200 rounded disabled:opacity-50"
+            >
+              Next Exercise
+            </button>
+          </div>
+        </>
+      )}
       {/* Header */}
       <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h2 className="text-2xl font-bold text-gray-800">{template.name}</h2>
-            <p className="text-gray-600">{template.description}</p>
+            <h2 className="text-2xl font-bold text-gray-800">{sessionData?.name}</h2>
+            <p className="text-gray-600">{sessionData?.description}</p>
           </div>
           <div className="text-right">
             <div className="text-sm text-gray-500">Duration</div>
@@ -294,7 +375,7 @@ const EnhancedWorkoutSession = ({ template, user, onComplete, onCancel }) => {
             className={`bg-white rounded-lg shadow-lg p-6 border-l-4 ${
               exercise.completed ? 'border-green-500 bg-green-50' :
               exercise.skipped ? 'border-yellow-500 bg-yellow-50' :
-              index === currentExerciseIndex ? 'border-blue-500' :
+              index === sessionExerciseIndex ? 'border-blue-500' :
               'border-gray-300'
             }`}
           >

@@ -1,5 +1,5 @@
 from flask import Blueprint, jsonify, request
-from ..models import db, User, WorkoutTemplate, Exercise
+from ..models import db, User, WorkoutTemplate, Exercise, WorkoutSession, ExerciseCompletion  # Updated import
 from datetime import datetime, date
 
 workouts_bp = Blueprint('workouts', __name__)

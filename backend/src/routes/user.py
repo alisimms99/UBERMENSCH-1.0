@@ -26,8 +26,11 @@ def create_user():
 
 @user_bp.route('/users/<int:user_id>', methods=['GET'])
 def get_user(user_id):
-    user = User.query.get_or_404(user_id)
-    return jsonify(user.to_dict())
+    try:
+        user = User.query.get_or_404(user_id)
+        return jsonify({ 'success': True, 'user': user.to_dict() })
+    except Exception as e:
+        return jsonify({ 'success': False, 'error': str(e) }), 500
 
 @user_bp.route('/users/<int:user_id>', methods=['PUT'])
 def update_user(user_id):

@@ -1,7 +1,7 @@
 // Simplified Mock API service for demo purposes
 class ApiService {
   constructor() {
-    this.baseURL = 'http://localhost:5000/api'
+    this.baseURL = 'http://localhost:5180/api'
     this.mockUser = null
     this.mockData = {
       exercises: [],
@@ -12,28 +12,17 @@ class ApiService {
   }
 
   async request(endpoint, options = {}) {
-    // For demo purposes, use mock data instead of real API calls
-    console.log(`Mock API call: ${endpoint}`, options)
-    
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 100))
-    
-    // Handle different endpoints with mock responses
-    if (endpoint === '/users' && options.method === 'GET') {
-      return []
+    // Perform real API request
+    const url = `${this.baseURL}${endpoint}`;
+    const response = await fetch(url, {
+      method: options.method || 'GET',
+      headers: { 'Content-Type': 'application/json' },
+      body: options.body ? JSON.stringify(options.body) : undefined
+    });
+    if (!response.ok) {
+      throw new Error(`API request failed: ${response.status} ${response.statusText}`);
     }
-    
-    if (endpoint.startsWith('/users/') && options.method === 'GET') {
-      return this.mockUser || this.createMockUser()
-    }
-    
-    if (endpoint.startsWith('/users/') && options.method === 'PUT') {
-      this.mockUser = { ...this.mockUser, ...options.body }
-      return this.mockUser
-    }
-    
-    // Return empty arrays for other endpoints
-    return []
+    return await response.json();
   }
 
   createMockUser() {
@@ -274,7 +263,49 @@ class ApiService {
   async getWorkout(workoutId) { return { id: workoutId, status: 'planned' } }
   async updateWorkout(workoutId, workoutData) { return { id: workoutId, ...workoutData } }
   async getExercises(category = null) { return [] }
-  async getWorkoutTemplates() { return [] }
+  async getWorkoutTemplates() {
+    // Attempt to fetch workout templates from the backend
+    const result = await this.request('/templates', { method: 'GET' })
+    // If backend returns data, use it; otherwise, provide demo templates
+    return result && result.length
+      ? result
+      : [
+        { id: 1, name: 'Full Body Blast', difficulty: 'Intermediate', duration_minutes: 45 },
+        { id: 2, name: 'Cardio Burn', difficulty: 'Beginner', duration_minutes: 30 },
+        { id: 3, name: 'Strength Builder', difficulty: 'Advanced', duration_minutes: 60 }
+      ]
+  }
+  
+  async getWorkoutSession(templateId) {
+    // Fetch template details from backend
+    const result = await this.request(`/templates/${templateId}`, { method: 'GET' })
+    // Use backend data if available, otherwise return demo session
+    if (result && result.id) {
+      return result
+    }
+    // Demo session structure
+    return {
+      id: templateId,
+      name: `Sample Template ${templateId}`,
+      description: 'Demo workout session loaded locally.',
+      phases: [
+        {
+          name: 'Warm-up',
+          exercises: [
+            { id: 1, name: 'Jumping Jacks', reps: 20, sets: 1, duration_seconds: null },
+            { id: 2, name: 'Arm Circles', reps: 15, sets: 1, duration_seconds: null }
+          ]
+        },
+        {
+          name: 'Main Set',
+          exercises: [
+            { id: 3, name: 'Pushups', reps: 10, sets: 3, duration_seconds: null },
+            { id: 4, name: 'Plank', reps: null, sets: 3, duration_seconds: 30 }
+          ]
+        }
+      ]
+    }
+  }
   async getUserProgress(userId, params = {}) { return [] }
   async updateStreaks(userId, streakData) { return streakData }
   async getAchievements() { return [] }

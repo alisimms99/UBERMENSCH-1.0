@@ -12,8 +12,8 @@ from datetime import datetime
 import subprocess
 import re
 
-from ..models.video_library import db, VideoCategory, Video, WorkoutVideoMapping, VideoPlaylist, VideoPlaylistItem
-from ..models.workout_templates import Exercise
+from ..models import db, VideoCategory, Video, WorkoutVideoMapping, VideoPlaylist, VideoPlaylistItem
+from ..models import Exercise
 
 # Create blueprint
 video_bp = Blueprint('video', __name__, url_prefix='/api/videos')
