@@ -186,3 +186,146 @@ class VideoPlaylistItem(db.Model):
             'video_id': self.video_id,
             'position': self.position
         }
+
+# New Models for Sprint 1
+
+class Supplement(db.Model):
+    __tablename__ = 'supplements'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    name = db.Column(db.String(150), nullable=False)
+    brand = db.Column(db.String(100))
+    dosage = db.Column(db.String(50))
+    form = db.Column(db.String(50))  # capsule, powder, liquid, etc
+    category = db.Column(db.String(50)) # mineral, vitamin, etc
+    
+    # Schedule (stored as JSON string)
+    # { "frequency": "daily", "times": ["morning", "evening"], "with_food": true }
+    schedule_json = db.Column(db.Text)
+    
+    # Inventory (stored as JSON string)
+    # { "quantity_remaining": 45, "unit": "capsules", "reorder_threshold": 14, "vendor": "Amazon", "vendor_url": "...", "price_per_unit": 0.35 }
+    inventory_json = db.Column(db.Text)
+    
+    benefits = db.Column(db.Text)  # JSON list
+    interactions = db.Column(db.Text)  # JSON list
+    notes = db.Column(db.Text)
+    
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    is_active = db.Column(db.Boolean, default=True)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'brand': self.brand,
+            'dosage': self.dosage,
+            'form': self.form,
+            'category': self.category,
+            'schedule': json.loads(self.schedule_json) if self.schedule_json else {},
+            'inventory': json.loads(self.inventory_json) if self.inventory_json else {},
+            'benefits': json.loads(self.benefits) if self.benefits else [],
+            'interactions': json.loads(self.interactions) if self.interactions else [],
+            'notes': self.notes
+        }
+
+class SupplementLog(db.Model):
+    __tablename__ = 'supplement_logs'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    supplement_id = db.Column(db.Integer, db.ForeignKey('supplements.id'))
+    date = db.Column(db.Date, nullable=False)
+    time_taken = db.Column(db.String(10)) # HH:MM
+    taken = db.Column(db.Boolean, default=True)
+    notes = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'supplement_id': self.supplement_id,
+            'date': self.date.isoformat() if self.date else None,
+            'time_taken': self.time_taken,
+            'taken': self.taken,
+            'notes': self.notes
+        }
+
+class DailyMetrics(db.Model):
+    __tablename__ = 'daily_metrics'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    date = db.Column(db.Date, nullable=False)
+    
+    # Morning
+    morning_wake_time = db.Column(db.String(10))
+    morning_sleep_quality = db.Column(db.Integer) # 1-5
+    morning_energy_level = db.Column(db.Integer) # 1-5
+    morning_mood = db.Column(db.Integer) # 1-5
+    morning_weight = db.Column(db.Float)
+    morning_symptoms = db.Column(db.Text) # JSON list
+    morning_notes = db.Column(db.Text)
+    
+    # Evening
+    evening_energy_level = db.Column(db.Integer) # 1-5
+    evening_mood = db.Column(db.Integer) # 1-5
+    evening_libido = db.Column(db.Integer) # 1-5
+    evening_stress_level = db.Column(db.Integer) # 1-5
+    evening_cramping = db.Column(db.String(50)) # None/Mild/Moderate/Severe
+    evening_symptoms = db.Column(db.Text) # JSON list
+    evening_notes = db.Column(db.Text)
+    
+    # Throughout Day
+    water_oz = db.Column(db.Integer)
+    movement_minutes = db.Column(db.Integer)
+    steps = db.Column(db.Integer)
+    bowel_movements = db.Column(db.Integer)
+    supplements_taken = db.Column(db.Boolean, default=False)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'date': self.date.isoformat() if self.date else None,
+            'morning': {
+                'wake_time': self.morning_wake_time,
+                'sleep_quality': self.morning_sleep_quality,
+                'energy_level': self.morning_energy_level,
+                'mood': self.morning_mood,
+                'weight': self.morning_weight,
+                'symptoms': json.loads(self.morning_symptoms) if self.morning_symptoms else [],
+                'notes': self.morning_notes
+            },
+            'evening': {
+                'energy_level': self.evening_energy_level,
+                'mood': self.evening_mood,
+                'libido': self.evening_libido,
+                'stress_level': self.evening_stress_level,
+                'cramping': self.evening_cramping,
+                'symptoms': json.loads(self.evening_symptoms) if self.evening_symptoms else [],
+                'notes': self.evening_notes
+            },
+            'throughout_day': {
+                'water_oz': self.water_oz,
+                'movement_minutes': self.movement_minutes,
+                'steps': self.steps,
+                'bowel_movements': self.bowel_movements,
+                'supplements_taken': self.supplements_taken
+            }
+        }
+
+class DiaryEntry(db.Model):
+    __tablename__ = 'diary_entries'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    date = db.Column(db.Date, nullable=False)
+    type = db.Column(db.String(20)) # morning or evening
+    content_json = db.Column(db.Text) # Stores the structured content (gratitude, intentions, etc)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'date': self.date.isoformat() if self.date else None,
+            'type': self.type,
+            'content': json.loads(self.content_json) if self.content_json else {}
+        }

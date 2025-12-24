@@ -59,7 +59,7 @@ class ApiService {
       method: 'POST',
       body: userData,
     })
-    
+
     // Save to offline storage if offline (temporarily disabled)
     // if (!isOnline()) {
     //   await offlineStorage.saveProgress({
@@ -67,7 +67,7 @@ class ApiService {
     //     data: userData
     //   });
     // }
-    
+
     this.mockUser = { id: 1, ...userData, onboarding_completed: false }
     return this.mockUser
   }
@@ -81,7 +81,7 @@ class ApiService {
       method: 'PUT',
       body: userData,
     })
-    
+
     // Save to offline storage if offline (temporarily disabled)
     // if (!isOnline()) {
     //   await offlineStorage.saveProgress({
@@ -90,7 +90,7 @@ class ApiService {
     //     data: userData
     //   });
     // }
-    
+
     this.mockUser = { ...this.mockUser, ...userData }
     return this.mockUser
   }
@@ -100,7 +100,7 @@ class ApiService {
       method: 'POST',
       body: assessmentData,
     })
-    
+
     // Save to offline storage if offline
     if (!isOnline()) {
       await offlineStorage.saveProgress({
@@ -109,7 +109,7 @@ class ApiService {
         data: assessmentData
       });
     }
-    
+
     this.mockUser = {
       ...this.mockUser,
       ...assessmentData,
@@ -126,7 +126,7 @@ class ApiService {
       method: 'PUT',
       body: targets,
     })
-    
+
     // Save to offline storage if offline
     if (!isOnline()) {
       await offlineStorage.saveProgress({
@@ -135,7 +135,7 @@ class ApiService {
         data: targets
       });
     }
-    
+
     this.mockUser = { ...this.mockUser, ...targets }
     return this.mockUser
   }
@@ -145,7 +145,7 @@ class ApiService {
       method: 'POST',
       body: workoutData,
     })
-    
+
     // Save to offline storage if offline
     if (!isOnline()) {
       await offlineStorage.saveWorkout({
@@ -154,7 +154,7 @@ class ApiService {
         status: 'planned'
       });
     }
-    
+
     return { id: Date.now(), user_id: userId, ...workoutData }
   }
 
@@ -163,7 +163,7 @@ class ApiService {
       method: 'POST',
       body: data,
     })
-    
+
     // Save to offline storage if offline
     if (!isOnline()) {
       await offlineStorage.saveWorkout({
@@ -173,7 +173,7 @@ class ApiService {
         completed_at: new Date().toISOString()
       });
     }
-    
+
     return { id: workoutId, status: 'completed' }
   }
 
@@ -182,7 +182,7 @@ class ApiService {
       method: 'POST',
       body: progressData,
     })
-    
+
     // Save to offline storage if offline
     if (!isOnline()) {
       await offlineStorage.saveProgress({
@@ -191,7 +191,7 @@ class ApiService {
         date: new Date().toISOString().split('T')[0]
       });
     }
-    
+
     return { id: Date.now(), user_id: userId, ...progressData }
   }
 
@@ -278,7 +278,7 @@ class ApiService {
     const result = await this.request(`/workouts/${workoutId}/start`, {
       method: 'POST',
     })
-    
+
     return {
       id: workoutId,
       status: 'in_progress',
@@ -298,7 +298,7 @@ class ApiService {
       method: 'PUT',
       body: data,
     })
-    
+
     // Save to offline storage if offline
     if (!isOnline()) {
       await offlineStorage.saveWorkout({
@@ -307,7 +307,7 @@ class ApiService {
         data
       });
     }
-    
+
     return { id: exerciseId, ...data }
   }
 
@@ -359,6 +359,48 @@ class ApiService {
   async updateStreaks(userId, streakData) { return streakData }
   async getAchievements() { return [] }
   async checkAchievements(userId) { return [] }
+
+  // --- Sprint 1: Supplements & Metrics ---
+
+  async getSupplements(userId) {
+    return this.request(`/supplements/list?user_id=${userId}`)
+  }
+
+  async getSupplementLogs(date, userId) {
+    return this.request(`/supplements/logs/${date}?user_id=${userId}`)
+  }
+
+  async logSupplement(data) {
+    return this.request('/supplements/log', {
+      method: 'POST',
+      body: data
+    })
+  }
+
+  async getDailyMetrics(date, userId) {
+    return this.request(`/metrics/daily/${date}?user_id=${userId}`)
+  }
+
+  async saveMorningCheckin(data) {
+    return this.request('/metrics/morning', {
+      method: 'POST',
+      body: data
+    })
+  }
+
+  async saveEveningCheckin(data) {
+    return this.request('/metrics/evening', {
+      method: 'POST',
+      body: data
+    })
+  }
+
+  async saveDiaryEntry(data) {
+    return this.request('/diary/save', {
+      method: 'POST',
+      body: data
+    })
+  }
 }
 
 export const apiService = new ApiService()
@@ -417,7 +459,7 @@ export const offlineStorageUtils = {
   getUnsyncedData() {
     const workouts = this.load('offline_workouts') || []
     const progress = this.load('offline_progress') || []
-    
+
     return {
       workouts: workouts.filter(item => !item.synced),
       progress: progress.filter(item => !item.synced)
@@ -427,7 +469,7 @@ export const offlineStorageUtils = {
   // Mark data as synced
   markAsSynced(type, timestamp) {
     const data = this.load(`offline_${type}`) || []
-    const updated = data.map(item => 
+    const updated = data.map(item =>
       item.timestamp === timestamp ? { ...item, synced: true } : item
     )
     this.save(`offline_${type}`, updated)

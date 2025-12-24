@@ -26,6 +26,9 @@ def create_app():
         from .routes.data_management import data_management_bp
         from .routes.templates import templates_bp
         from .routes.video_server import video_bp
+        from .routes.supplements import supplements_bp
+        from .routes.metrics import metrics_bp
+        from .routes.diary import diary_bp
         
         # Register blueprints
         app.register_blueprint(user_bp, url_prefix='/api')
@@ -35,6 +38,9 @@ def create_app():
         app.register_blueprint(data_management_bp, url_prefix='/api')
         app.register_blueprint(templates_bp, url_prefix='/api')
         app.register_blueprint(video_bp)
+        app.register_blueprint(supplements_bp, url_prefix='/api/supplements')
+        app.register_blueprint(metrics_bp, url_prefix='/api/metrics')
+        app.register_blueprint(diary_bp, url_prefix='/api/diary')
         # Initialize CORS after registering blueprints
         CORS(app)
         

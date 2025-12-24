@@ -13,7 +13,11 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
-from src.models.user import db, User, Exercise, WorkoutTemplate, Workout, WorkoutExercise, ProgressEntry, Achievement, UserAchievement
+from src.models import (
+    db, User, Exercise, WorkoutTemplate, Achievement, 
+    Supplement, DailyMetrics, SupplementLog, DiaryEntry
+)
+import json
 
 def create_app():
     """Create Flask app for database initialization."""
@@ -106,38 +110,23 @@ def init_database():
         template = WorkoutTemplate(
             name="Basic Fitness",
             description="A simple workout for beginners",
-            estimated_duration=30,
+            estimated_duration_min=30,
+            estimated_duration_max=45,
             difficulty_level="beginner",
-            exercises_config='[{"exercise_id": 1, "reps": 5, "sets": 1}, {"exercise_id": 2, "reps": 5, "sets": 1}, {"exercise_id": 3, "duration": 30, "sets": 1}]'
+            phases=json.dumps([
+                {
+                    "name": "Warmup",
+                    "exercises": [{"exercise_id": 1, "reps": 5, "sets": 1}]
+                }
+            ]) 
         )
         db.session.add(template)
         
         # Create sample achievements
         achievements = [
-            Achievement(
-                name="First Workout",
-                description="Complete your first workout",
-                category="milestone",
-                criteria='{"type": "workout_count", "value": 1}',
-                xp_reward=10,
-                badge_icon="trophy"
-            ),
-            Achievement(
-                name="Week Warrior",
-                description="Complete 7 workouts",
-                category="milestone",
-                criteria='{"type": "workout_count", "value": 7}',
-                xp_reward=50,
-                badge_icon="calendar"
-            ),
-            Achievement(
-                name="Pushup Pro",
-                description="Complete 100 pushups in a single workout",
-                category="progression",
-                criteria='{"type": "single_exercise", "exercise": "pushups", "value": 100}',
-                xp_reward=100,
-                badge_icon="muscle"
-            )
+            Achievement(name="First Workout"),
+            Achievement(name="Week Warrior"),
+            Achievement(name="Pushup Pro")
         ]
         
         for achievement in achievements:
@@ -145,33 +134,93 @@ def init_database():
         
         # Create demo user
         demo_user = User(
-            username="demo_user",
-            email="demo@fittracker.com",
+            username="Ali",
+            email="ali@ubermensch.com",
             age=55,
             weight=225.0,
             height=70.5,
             target_pushups=50,
             target_situps=50,
             target_daily_steps=10000,
-            initial_max_pushups=5,
-            initial_max_situps=5,
-            initial_plank_duration=30,
-            current_pushup_target=5,
-            current_situp_target=5,
-            current_plank_target=30,
             preferred_workout_duration=60,
             workouts_per_week=3,
             onboarding_completed=True,
             created_at=datetime.utcnow()
         )
         db.session.add(demo_user)
+        db.session.commit()
         
-        # Commit all changes
+        # --- Add Supplements (Sprint 1) ---
+        user_id = demo_user.id
+        supplements = [
+            Supplement(
+                user_id=user_id,
+                name="TRT",
+                dosage="varies",
+                category="hormone",
+                schedule_json=json.dumps({"frequency": "weekly", "times": ["morning"]}),
+                form="injection"
+            ),
+            Supplement(
+                user_id=user_id,
+                name="Magnesium Glycinate",
+                brand="Pure Encapsulations",
+                dosage="400mg",
+                category="mineral",
+                schedule_json=json.dumps({"frequency": "daily", "times": ["evening"]}),
+                form="capsule",
+                inventory_json=json.dumps({"quantity_remaining": 60, "reorder_threshold": 10})
+            ),
+            Supplement(
+                user_id=user_id,
+                name="Omega-3 Fish Oil",
+                dosage="2000mg",
+                category="fatty acid",
+                schedule_json=json.dumps({"frequency": "daily", "times": ["with_meal"]}),
+                form="capsule"
+            ),
+            Supplement(
+                user_id=user_id,
+                name="Sea Moss",
+                dosage="1 tbsp",
+                category="superfood",
+                schedule_json=json.dumps({"frequency": "daily", "times": ["morning"]}),
+                form="gel"
+            ),
+            Supplement(
+                user_id=user_id,
+                name="Vitamin D3",
+                dosage="5000 IU",
+                category="vitamin",
+                schedule_json=json.dumps({"frequency": "daily", "times": ["morning"]}),
+                form="capsule"
+            ),
+            Supplement(
+                user_id=user_id,
+                name="Zinc",
+                dosage="30mg",
+                category="mineral",
+                schedule_json=json.dumps({"frequency": "daily", "times": ["evening"]}),
+                form="capsule"
+            ),
+            Supplement(
+                user_id=user_id,
+                name="B-Complex",
+                dosage="1 cap",
+                category="vitamin",
+                schedule_json=json.dumps({"frequency": "daily", "times": ["morning"]}),
+                form="capsule"
+            )
+        ]
+        
+        for supp in supplements:
+            db.session.add(supp)
+            
         db.session.commit()
         
         print("Sample data added successfully!")
         print(f"Database initialized at: {app.config['SQLALCHEMY_DATABASE_URI']}")
-        print("Demo user created: demo_user")
+        print("Demo user created: Ali")
 
 if __name__ == "__main__":
     init_database()

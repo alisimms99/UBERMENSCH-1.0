@@ -4,7 +4,8 @@ from .models import (
     VideoCategory, Video, WorkoutVideoMapping,
     ProgressEntry, Achievement, UserAchievement,
     WorkoutSession, ExerciseCompletion,
-    VideoPlaylist, VideoPlaylistItem
+    VideoPlaylist, VideoPlaylistItem,
+    Supplement, SupplementLog, DailyMetrics, DiaryEntry
 )
 
 __all__ = [
@@ -12,5 +13,6 @@ __all__ = [
     'VideoCategory', 'Video', 'WorkoutVideoMapping',
     'ProgressEntry', 'Achievement', 'UserAchievement',
     'WorkoutSession', 'ExerciseCompletion',
-    'VideoPlaylist', 'VideoPlaylistItem'
+    'VideoPlaylist', 'VideoPlaylistItem',
+    'Supplement', 'SupplementLog', 'DailyMetrics', 'DiaryEntry'
 ]
