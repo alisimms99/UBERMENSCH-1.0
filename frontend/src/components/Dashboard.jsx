@@ -27,7 +27,7 @@ import DiaryEntry from './DiaryEntry'
 
 export default function Dashboard({ user }) {
   const navigate = useNavigate()
-  const handleStartWorkout = (templateId) => navigate(`/workout/session/${templateId}`)
+  const handleStartWorkout = (templateId) => navigate(`/workout/template/${templateId}`)
   const [todayProgress, setTodayProgress] = useState(null)
   const [todayWorkout, setTodayWorkout] = useState(null)
   const [workoutStats, setWorkoutStats] = useState(null)
@@ -301,24 +301,53 @@ export default function Dashboard({ user }) {
                   )}
                 </div>
               ) : (
-                <div className="text-center py-8">
-                  {templatesLoading ? (
-                    <p>Loading templates...</p>
-                  ) : templatesError ? (
-                    <p className="text-red-500">{templatesError}</p>
-                  ) : (
-                    templates.map(template => (
-                      <div key={template.id} className="mb-4">
-                        <h3 className="font-semibold text-foreground">{template.name}</h3>
-                        <button
-                          onClick={() => handleStartWorkout(template.id)}
-                          className="px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90"
-                        >
-                          Start Workout
-                        </button>
+                <div className="text-center py-8 text-muted-foreground">
+                  No workout planned for today. Select a template below to start one!
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* Workout Templates List - Always Visible */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.8 }}
+          className="lg:col-span-3"
+        >
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Activity className="w-5 h-5" />
+                <span>Workout Templates</span>
+              </CardTitle>
+              <CardDescription>Select a routine to start immediately</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {templatesLoading ? (
+                <div className="text-center py-4">Loading templates...</div>
+              ) : templatesError ? (
+                <div className="text-red-500">{templatesError}</div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {templates.map(template => (
+                    <div key={template.id} className="flex items-start justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors cursor-pointer group" onClick={() => handleStartWorkout(template.id)}>
+                      <div>
+                        <h3 className="font-semibold text-foreground text-lg group-hover:text-primary transition-colors">{template.name}</h3>
+                        <div className="flex gap-2 mt-2">
+                          <Badge variant="secondary" className="text-xs">{template.difficulty_level || 'General'}</Badge>
+                          <Badge variant="outline" className="text-xs">{template.estimated_duration_min}-{template.estimated_duration_max} min</Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
+                          {template.description}
+                        </p>
                       </div>
-                    ))
-                  )}
+                      <Button size="icon" variant="ghost" className="mt-1">
+                        <Play className="w-6 h-6 text-primary" />
+                      </Button>
+                    </div>
+                  ))}
                 </div>
               )}
             </CardContent>

@@ -8,6 +8,7 @@ import './App.css'
 import Dashboard from './components/Dashboard'
 import Onboarding from './components/Onboarding'
 import WorkoutSession from './components/WorkoutSession'
+import WorkoutDetail from './components/WorkoutDetail'
 import Progress from './components/Progress'
 import Profile from './components/Profile'
 import Navigation from './components/Navigation'
@@ -23,7 +24,7 @@ function App() {
   useEffect(() => {
     // Check for existing user or create demo user
     initializeUser()
-    
+
     // Check for dark mode preference
     const savedDarkMode = localStorage.getItem('darkMode') === 'true'
     setDarkMode(savedDarkMode)
@@ -33,46 +34,26 @@ function App() {
   }, [])
 
   const initializeUser = async () => {
-    try {
-      // For demo purposes, we'll create a default user
-      // In a real app, this would check authentication
-      const users = await apiService.getUsers()
-      
-      if (users.length === 0) {
-        // Create demo user
-        const demoUser = await apiService.createUser({
-          username: 'fitness_user',
-          email: 'user@fittracker.com',
-          age: 55,
-          weight: 225,
-          height: 70.5
-        })
-        setUser(demoUser)
-      } else {
-        setUser(users[0])
-      }
-    } catch (error) {
-      console.error('Failed to initialize user:', error)
-      // Create offline demo user
-      setUser({
-        id: 1,
-        username: 'Demo User',
-        email: 'demo@fittracker.com',
-        age: 55,
-        weight: 225,
-        height: 70.5,
-        onboarding_completed: false
-      })
-    } finally {
-      setLoading(false)
+    // TEMPORARY: Skip API, use local user
+    const offlineUser = {
+      id: 1,
+      username: 'Ali',
+      email: 'ali@ubermensch.com',
+      age: 55,
+      weight: 225,
+      height: 70.5,
+      onboarding_completed: true
     }
+    setUser(offlineUser)
+    localStorage.setItem('user', JSON.stringify(offlineUser))
+    setLoading(false)
   }
 
   const toggleDarkMode = () => {
     const newDarkMode = !darkMode
     setDarkMode(newDarkMode)
     localStorage.setItem('darkMode', newDarkMode.toString())
-    
+
     if (newDarkMode) {
       document.documentElement.classList.add('dark')
     } else {
@@ -112,37 +93,50 @@ function App() {
           <Routes>
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="/workout/session/:templateId" element={<EnhancedWorkoutSession />} />
-            <Route 
-              path="/dashboard" 
+            <Route
+              path="/dashboard"
               element={
                 <MainLayout user={user} darkMode={darkMode} toggleDarkMode={toggleDarkMode}>
                   <Dashboard user={user} />
                 </MainLayout>
-              } 
+              }
             />
-            <Route 
-              path="/workout" 
+            <Route
+              path="/workout"
+              element={<Navigate to="/" />}
+            />
+            {/* Sprint 2 Routes */}
+            <Route
+              path="/workout/template/:templateId"
+              element={
+                <MainLayout user={user} darkMode={darkMode} toggleDarkMode={toggleDarkMode}>
+                  <WorkoutDetail user={user} />
+                </MainLayout>
+              }
+            />
+            <Route
+              path="/workout/session/:templateId"
               element={
                 <MainLayout user={user} darkMode={darkMode} toggleDarkMode={toggleDarkMode}>
                   <WorkoutSession user={user} />
                 </MainLayout>
-              } 
+              }
             />
-            <Route 
-              path="/progress" 
+            <Route
+              path="/progress"
               element={
                 <MainLayout user={user} darkMode={darkMode} toggleDarkMode={toggleDarkMode}>
                   <Progress user={user} />
                 </MainLayout>
-              } 
+              }
             />
-            <Route 
-              path="/profile" 
+            <Route
+              path="/profile"
               element={
                 <MainLayout user={user} darkMode={darkMode} toggleDarkMode={toggleDarkMode}>
                   <Profile user={user} setUser={setUser} />
                 </MainLayout>
-              } 
+              }
             />
           </Routes>
         </AnimatePresence>

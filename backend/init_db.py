@@ -12,11 +12,10 @@ from datetime import datetime
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 
 from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
 from src.models import (
-    db, User, Exercise, WorkoutTemplate, Achievement, 
-    Supplement, DailyMetrics, SupplementLog, DiaryEntry
+    db, User, Achievement, Supplement
 )
+from src.data.enhanced_seed_templates import create_enhanced_workout_templates, create_enhanced_exercises
 import json
 
 def create_app():
@@ -49,78 +48,9 @@ def init_database():
         
         print("Tables created successfully!")
         
-        # Create sample exercises
-        exercises = [
-            Exercise(
-                name="Pushups",
-                category="upper_body",
-                description="Standard pushup exercise for chest, shoulders, and triceps",
-                instructions="Start in plank position, lower body to ground, push back up",
-                is_timed=False,
-                is_reps=True,
-                is_distance=False,
-                default_rest_seconds=60
-            ),
-            Exercise(
-                name="Situps",
-                category="core_lower",
-                description="Basic abdominal exercise",
-                instructions="Lie on back, knees bent, hands behind head, sit up",
-                is_timed=False,
-                is_reps=True,
-                is_distance=False,
-                default_rest_seconds=60
-            ),
-            Exercise(
-                name="Plank",
-                category="core_lower",
-                description="Isometric core strengthening exercise",
-                instructions="Hold plank position with straight body line",
-                is_timed=True,
-                is_reps=False,
-                is_distance=False,
-                default_rest_seconds=60
-            ),
-            Exercise(
-                name="Squats",
-                category="functional",
-                description="Basic lower body exercise",
-                instructions="Stand with feet shoulder-width apart, lower into squat position",
-                is_timed=False,
-                is_reps=True,
-                is_distance=False,
-                default_rest_seconds=60
-            ),
-            Exercise(
-                name="Walking",
-                category="walking",
-                description="Low-impact cardiovascular exercise",
-                instructions="Walk at a steady pace for the specified duration",
-                is_timed=True,
-                is_reps=False,
-                is_distance=True,
-                default_rest_seconds=0
-            )
-        ]
-        
-        for exercise in exercises:
-            db.session.add(exercise)
-        
-        # Create sample workout template
-        template = WorkoutTemplate(
-            name="Basic Fitness",
-            description="A simple workout for beginners",
-            estimated_duration_min=30,
-            estimated_duration_max=45,
-            difficulty_level="beginner",
-            phases=json.dumps([
-                {
-                    "name": "Warmup",
-                    "exercises": [{"exercise_id": 1, "reps": 5, "sets": 1}]
-                }
-            ]) 
-        )
-        db.session.add(template)
+        # Seed Templates and Exercises using enhanced script
+        print("Seeding workout templates...")
+        create_enhanced_workout_templates()
         
         # Create sample achievements
         achievements = [
@@ -200,13 +130,13 @@ def init_database():
                 name="Zinc",
                 dosage="30mg",
                 category="mineral",
-                schedule_json=json.dumps({"frequency": "daily", "times": ["evening"]}),
+                schedule_json=json.dumps({"frequency": "daily", "times": ["with_meal"]}),
                 form="capsule"
             ),
             Supplement(
                 user_id=user_id,
                 name="B-Complex",
-                dosage="1 cap",
+                brand="Methylated",
                 category="vitamin",
                 schedule_json=json.dumps({"frequency": "daily", "times": ["morning"]}),
                 form="capsule"
@@ -217,11 +147,7 @@ def init_database():
             db.session.add(supp)
             
         db.session.commit()
-        
-        print("Sample data added successfully!")
-        print(f"Database initialized at: {app.config['SQLALCHEMY_DATABASE_URI']}")
-        print("Demo user created: Ali")
+        print("Database initialized successfully!")
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     init_database()
-

@@ -46,15 +46,19 @@ class WorkoutTemplate(db.Model):
     estimated_duration_min = db.Column(db.Integer)
     estimated_duration_max = db.Column(db.Integer)
     difficulty_level = db.Column(db.String(50))
-    phases = db.Column(db.Text)  # JSON string
-    exercises = db.relationship('Exercise', backref='template', lazy=True)
+    # Relationship to exercises through association table
+    template_exercises = db.relationship('WorkoutTemplateExercise', backref='template', lazy=True, cascade="all, delete-orphan")
 
     def to_dict(self):
         return {
             'id': self.id,
             'name': self.name,
             'description': self.description,
-            'phases': json.loads(self.phases) if self.phases else None
+            'estimated_duration_min': self.estimated_duration_min,
+            'estimated_duration_max': self.estimated_duration_max,
+            'difficulty_level': self.difficulty_level,
+            # Sort exercises by order
+            'exercises': sorted([te.to_dict() for te in self.template_exercises], key=lambda x: x['sort_order'])
         }
 
 class Exercise(db.Model):
@@ -66,12 +70,58 @@ class Exercise(db.Model):
     instructions = db.Column(db.Text)
     is_timed = db.Column(db.Boolean, default=False)
     is_reps = db.Column(db.Boolean, default=True)
-    is_distance = db.Column(db.Boolean, default=False)  # Add this
-    default_reps = db.Column(db.Integer)  # Add this
-    default_duration_seconds = db.Column(db.Integer)  # THIS FIXES THE ERROR
+    is_distance = db.Column(db.Boolean, default=False)
+    default_reps = db.Column(db.Integer)
+    default_duration_seconds = db.Column(db.Integer)
     default_rest_seconds = db.Column(db.Integer, default=60)
-    template_id = db.Column(db.Integer, db.ForeignKey('workout_templates.id'))
+    
+    # Relationships
     video_mappings = db.relationship('WorkoutVideoMapping', backref='exercise', lazy=True)
+    template_associations = db.relationship('WorkoutTemplateExercise', backref='exercise', lazy=True)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'category': self.category,
+            'description': self.description,
+            'instructions': self.instructions,
+            'is_timed': self.is_timed,
+            'is_reps': self.is_reps,
+            'default_reps': self.default_reps,
+            'default_duration_seconds': self.default_duration_seconds,
+            'default_rest_seconds': self.default_rest_seconds
+        }
+
+class WorkoutTemplateExercise(db.Model):
+    __tablename__ = 'workout_template_exercises'
+    id = db.Column(db.Integer, primary_key=True)
+    template_id = db.Column(db.Integer, db.ForeignKey('workout_templates.id'), nullable=False)
+    exercise_id = db.Column(db.Integer, db.ForeignKey('exercises.id'), nullable=False)
+    
+    phase = db.Column(db.String(50)) # warmup, main, cooldown
+    sort_order = db.Column(db.Integer, default=0)
+    
+    # Overrides
+    target_reps = db.Column(db.Integer)
+    target_sets = db.Column(db.Integer, default=1)
+    target_duration_seconds = db.Column(db.Integer)
+    rest_seconds = db.Column(db.Integer)
+    
+    def to_dict(self):
+        # Merge exercise details with template overrides
+        base_exercise = self.exercise.to_dict()
+        return {
+            'id': self.id,
+            'exercise_id': self.exercise_id,
+            'exercise': base_exercise,
+            'phase': self.phase,
+            'sort_order': self.sort_order,
+            'target_reps': self.target_reps or base_exercise['default_reps'],
+            'target_sets': self.target_sets,
+            'target_duration_seconds': self.target_duration_seconds or base_exercise['default_duration_seconds'],
+            'rest_seconds': self.rest_seconds or base_exercise['default_rest_seconds']
+        }
 
 class VideoCategory(db.Model):
     __tablename__ = 'video_categories'

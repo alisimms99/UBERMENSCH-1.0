@@ -5,6 +5,7 @@ from .models import db
 
 def create_app():
     app = Flask(__name__)
+    CORS(app, resources={r"/*": {"origins": "*"}})  # Enable CORS immediately
     
     # Database configuration (FIXED)
     basedir = os.path.abspath(os.path.dirname(__file__))  # THIS WAS MISSING
@@ -41,8 +42,8 @@ def create_app():
         app.register_blueprint(supplements_bp, url_prefix='/api/supplements')
         app.register_blueprint(metrics_bp, url_prefix='/api/metrics')
         app.register_blueprint(diary_bp, url_prefix='/api/diary')
-        # Initialize CORS after registering blueprints
-        CORS(app)
+        # Initialize CORS with permissive policy
+        CORS(app, resources={r"/*": {"origins": "*"}})
         
         db.create_all()  # Create tables if they don't exist
     

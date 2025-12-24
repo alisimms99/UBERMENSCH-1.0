@@ -3,7 +3,7 @@
 
 class ApiService {
   constructor() {
-    this.baseURL = 'http://localhost:5180/api'
+    this.baseURL = '/api'
     this.mockUser = null
     this.mockData = {
       exercises: [],
@@ -101,14 +101,7 @@ class ApiService {
       body: assessmentData,
     })
 
-    // Save to offline storage if offline
-    if (!isOnline()) {
-      await offlineStorage.saveProgress({
-        type: 'fitness_assessment',
-        userId,
-        data: assessmentData
-      });
-    }
+
 
     this.mockUser = {
       ...this.mockUser,
@@ -127,14 +120,7 @@ class ApiService {
       body: targets,
     })
 
-    // Save to offline storage if offline
-    if (!isOnline()) {
-      await offlineStorage.saveProgress({
-        type: 'target_update',
-        userId,
-        data: targets
-      });
-    }
+
 
     this.mockUser = { ...this.mockUser, ...targets }
     return this.mockUser
@@ -146,14 +132,7 @@ class ApiService {
       body: workoutData,
     })
 
-    // Save to offline storage if offline
-    if (!isOnline()) {
-      await offlineStorage.saveWorkout({
-        userId,
-        ...workoutData,
-        status: 'planned'
-      });
-    }
+
 
     return { id: Date.now(), user_id: userId, ...workoutData }
   }
@@ -164,15 +143,7 @@ class ApiService {
       body: data,
     })
 
-    // Save to offline storage if offline
-    if (!isOnline()) {
-      await offlineStorage.saveWorkout({
-        id: workoutId,
-        ...data,
-        status: 'completed',
-        completed_at: new Date().toISOString()
-      });
-    }
+
 
     return { id: workoutId, status: 'completed' }
   }
@@ -183,14 +154,7 @@ class ApiService {
       body: progressData,
     })
 
-    // Save to offline storage if offline
-    if (!isOnline()) {
-      await offlineStorage.saveProgress({
-        userId,
-        ...progressData,
-        date: new Date().toISOString().split('T')[0]
-      });
-    }
+
 
     return { id: Date.now(), user_id: userId, ...progressData }
   }
@@ -299,14 +263,7 @@ class ApiService {
       body: data,
     })
 
-    // Save to offline storage if offline
-    if (!isOnline()) {
-      await offlineStorage.saveWorkout({
-        type: 'exercise_update',
-        exerciseId,
-        data
-      });
-    }
+
 
     return { id: exerciseId, ...data }
   }
@@ -354,7 +311,9 @@ class ApiService {
   async getWorkout(workoutId) { return { id: workoutId, status: 'planned' } }
   async updateWorkout(workoutId, workoutData) { return { id: workoutId, ...workoutData } }
   async getExercises(category = null) { return [] }
-  async getWorkoutTemplates() { return [] }
+  async getWorkoutTemplates() {
+    return this.request('/templates', { method: 'GET' })
+  }
   async getUserProgress(userId, params = {}) { return [] }
   async updateStreaks(userId, streakData) { return streakData }
   async getAchievements() { return [] }
