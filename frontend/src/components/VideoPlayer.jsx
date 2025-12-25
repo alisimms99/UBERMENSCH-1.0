@@ -98,6 +98,45 @@ const VideoPlayer = ({
     }
   }, [videoUrl]);
 
+  // Poll for transcoding completion
+  useEffect(() => {
+    if (transcodingStatus !== 'transcoding' || !videoUrl) {
+      return
+    }
+
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5180'
+    const streamPrefix = `${apiUrl}/api/videos/stream/`
+    
+    if (!videoUrl.startsWith(streamPrefix)) {
+      return
+    }
+
+    const urlPath = videoUrl.replace(streamPrefix, '')
+    
+    // Poll every 2 seconds to check if transcoding is complete
+    const pollInterval = setInterval(() => {
+      fetch(`${apiUrl}/api/videos/transcode-status/${urlPath}`)
+        .then(res => res.json())
+        .then(data => {
+          // If transcoding is complete (cache now exists)
+          if (!data.needs_transcoding || data.cache_exists) {
+            setTranscodingStatus('ready')
+            setTranscodingMessage('')
+            // Clear loading state to allow video to play
+            setIsLoading(false)
+          }
+        })
+        .catch(err => {
+          console.error('Failed to poll transcode status:', err)
+        })
+    }, 2000) // Poll every 2 seconds
+
+    // Cleanup interval on unmount or when transcoding completes
+    return () => {
+      clearInterval(pollInterval)
+    }
+  }, [transcodingStatus, videoUrl]);
+
   useEffect(() => {
     if (autoPlay && videoRef.current) {
       handlePlay();
