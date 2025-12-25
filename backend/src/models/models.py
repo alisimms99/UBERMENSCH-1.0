@@ -98,7 +98,7 @@ class Exercise(db.Model):
             'default_duration_seconds': self.default_duration_seconds,
             'default_rest_seconds': self.default_rest_seconds,
             'video_path': self.video_path,
-            'video_paths': self.video_paths if self.video_paths else []
+            'video_paths': self.video_paths if self.video_paths is not None else []
         }
 
 class WorkoutTemplateExercise(db.Model):
@@ -453,4 +453,30 @@ class DiaryEntry(db.Model):
             'date': self.date.isoformat() if self.date else None,
             'type': self.type,
             'content': json.loads(self.content_json) if self.content_json else {}
+        }
+
+class TranscodeJob(db.Model):
+    """Track video transcoding jobs"""
+    __tablename__ = 'transcode_jobs'
+    id = db.Column(db.String(64), primary_key=True)  # SHA-256 hash (first 32 chars) of input file path
+    input_path = db.Column(db.String(512), nullable=False)
+    output_path = db.Column(db.String(512), nullable=False)
+    status = db.Column(db.String(20), nullable=False, default='pending')  # pending, processing, complete, failed
+    progress = db.Column(db.Integer, default=0)  # 0-100
+    error_message = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    started_at = db.Column(db.DateTime)
+    completed_at = db.Column(db.DateTime)
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'input_path': self.input_path,
+            'output_path': self.output_path,
+            'status': self.status,
+            'progress': self.progress,
+            'error_message': self.error_message,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'started_at': self.started_at.isoformat() if self.started_at else None,
+            'completed_at': self.completed_at.isoformat() if self.completed_at else None
         }

@@ -10,7 +10,6 @@ import sqlite3
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 
 from src.main import create_app
-from src.models import db
 
 def migrate_database():
     """Add video_path columns to Exercise table if they don't exist."""
