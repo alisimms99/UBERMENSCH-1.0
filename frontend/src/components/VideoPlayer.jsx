@@ -101,40 +101,54 @@ const VideoPlayer = ({
   // Poll for transcoding completion
   useEffect(() => {
     if (transcodingStatus !== 'transcoding' || !videoUrl) {
-      return
+      return;
     }
 
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5180'
-    const streamPrefix = `${apiUrl}/api/videos/stream/`
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5180';
+    const streamPrefix = `${apiUrl}/api/videos/stream/`;
     
     if (!videoUrl.startsWith(streamPrefix)) {
-      return
+      return;
     }
 
-    const urlPath = videoUrl.replace(streamPrefix, '')
+    const urlPath = videoUrl.replace(streamPrefix, '');
+    let pollAttempts = 0;
+    const maxPollAttempts = 180; // Stop polling after 6 minutes (180 * 2 seconds)
     
     // Poll every 2 seconds to check if transcoding is complete
     const pollInterval = setInterval(() => {
+      pollAttempts++;
+      
+      // Stop polling if max attempts reached
+      if (pollAttempts >= maxPollAttempts) {
+        clearInterval(pollInterval);
+        setTranscodingStatus(null);
+        setTranscodingMessage('');
+        setError('Transcoding timeout - please try again later');
+        return;
+      }
+      
       fetch(`${apiUrl}/api/videos/transcode-status/${urlPath}`)
         .then(res => res.json())
         .then(data => {
           // If transcoding is complete (cache now exists)
           if (!data.needs_transcoding || data.cache_exists) {
-            setTranscodingStatus('ready')
-            setTranscodingMessage('')
+            setTranscodingStatus('ready');
+            setTranscodingMessage('');
             // Clear loading state to allow video to play
-            setIsLoading(false)
+            setIsLoading(false);
           }
         })
         .catch(err => {
-          console.error('Failed to poll transcode status:', err)
-        })
-    }, 2000) // Poll every 2 seconds
+          console.error('Failed to poll transcode status:', err);
+          // Don't stop polling on individual errors, but increment attempt counter
+        });
+    }, 2000); // Poll every 2 seconds
 
     // Cleanup interval on unmount or when transcoding completes
     return () => {
-      clearInterval(pollInterval)
-    }
+      clearInterval(pollInterval);
+    };
   }, [transcodingStatus, videoUrl]);
 
   useEffect(() => {
