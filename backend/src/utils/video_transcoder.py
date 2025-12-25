@@ -69,9 +69,10 @@ def transcode_to_h264(input_path, output_path):
     try:
         lock_file = open(lock_path, 'w')
         fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-    except OSError as e:
-        if e.errno == errno.EWOULDBLOCK or e.errno == errno.EAGAIN:
-            # Another process is transcoding, return None to signal retry
+    except (OSError, BlockingIOError) as e:
+        # Another process is transcoding, return None to signal retry
+        # BlockingIOError or OSError with EWOULDBLOCK/EAGAIN indicates lock is held
+        if isinstance(e, BlockingIOError) or e.errno in (errno.EWOULDBLOCK, errno.EAGAIN):
             logger.info(f"Another process is already transcoding: {input_path}")
             if lock_file:
                 lock_file.close()
