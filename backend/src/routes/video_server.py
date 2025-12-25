@@ -57,7 +57,8 @@ def send_file_partial(file_path):
         content_length = byte_end - byte_start + 1
         
         def generate():
-            with open(file_path, 'rb') as f:
+            f = open(file_path, 'rb')
+            try:
                 f.seek(byte_start)
                 remaining = content_length
                 while remaining:
@@ -67,6 +68,8 @@ def send_file_partial(file_path):
                         break
                     remaining -= len(chunk)
                     yield chunk
+            finally:
+                f.close()
         
         response = Response(
             generate(),
@@ -367,7 +370,8 @@ def stream_video(video_id):
             content_length = byte_end - byte_start + 1
             
             def generate():
-                with open(file_path, 'rb') as f:
+                f = open(file_path, 'rb')
+                try:
                     f.seek(byte_start)
                     remaining = content_length
                     while remaining:
@@ -377,6 +381,8 @@ def stream_video(video_id):
                             break
                         remaining -= len(chunk)
                         yield chunk
+                finally:
+                    f.close()
             
             response = Response(
                 generate(),
