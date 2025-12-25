@@ -1,9 +1,8 @@
-// Mock API service for demo purposes with offline support
-// import { isOnline, queueOfflineRequest, offlineStorage } from './offline.js';
+// API service (single-user app: Ali)
 
 class ApiService {
   constructor() {
-    this.baseURL = '/api'
+    this.baseURL = 'http://localhost:5180/api'
     this.mockUser = null
     this.mockData = {
       exercises: [],
@@ -16,11 +15,22 @@ class ApiService {
   async request(endpoint, options = {}) {
     // Perform real API request
     const url = `${this.baseURL}${endpoint}`;
-    const response = await fetch(url, {
-      method: options.method || 'GET',
-      headers: { 'Content-Type': 'application/json' },
-      body: options.body ? JSON.stringify(options.body) : undefined
-    });
+    const controller = new AbortController()
+    const timeoutMs = options.timeoutMs ?? 10000
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
+
+    let response
+    try {
+      response = await fetch(url, {
+        method: options.method || 'GET',
+        headers: { 'Content-Type': 'application/json' },
+        body: options.body ? JSON.stringify(options.body) : undefined,
+        signal: controller.signal,
+      })
+    } finally {
+      clearTimeout(timeoutId)
+    }
+
     if (!response.ok) {
       throw new Error(`API request failed: ${response.status} ${response.statusText}`);
     }
@@ -60,14 +70,6 @@ class ApiService {
       body: userData,
     })
 
-    // Save to offline storage if offline (temporarily disabled)
-    // if (!isOnline()) {
-    //   await offlineStorage.saveProgress({
-    //     type: 'user_creation',
-    //     data: userData
-    //   });
-    // }
-
     this.mockUser = { id: 1, ...userData, onboarding_completed: false }
     return this.mockUser
   }
@@ -81,15 +83,6 @@ class ApiService {
       method: 'PUT',
       body: userData,
     })
-
-    // Save to offline storage if offline (temporarily disabled)
-    // if (!isOnline()) {
-    //   await offlineStorage.saveProgress({
-    //     type: 'user_update',
-    //     userId,
-    //     data: userData
-    //   });
-    // }
 
     this.mockUser = { ...this.mockUser, ...userData }
     return this.mockUser

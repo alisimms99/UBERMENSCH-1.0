@@ -14,11 +14,21 @@ class ApiService {
   async request(endpoint, options = {}) {
     // Perform real API request
     const url = `${this.baseURL}${endpoint}`;
-    const response = await fetch(url, {
-      method: options.method || 'GET',
-      headers: { 'Content-Type': 'application/json' },
-      body: options.body ? JSON.stringify(options.body) : undefined
-    });
+    const controller = new AbortController()
+    const timeoutMs = options.timeoutMs ?? 10000
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
+
+    let response
+    try {
+      response = await fetch(url, {
+        method: options.method || 'GET',
+        headers: { 'Content-Type': 'application/json' },
+        body: options.body ? JSON.stringify(options.body) : undefined,
+        signal: controller.signal,
+      })
+    } finally {
+      clearTimeout(timeoutId)
+    }
     if (!response.ok) {
       throw new Error(`API request failed: ${response.status} ${response.statusText}`);
     }
