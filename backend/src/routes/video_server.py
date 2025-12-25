@@ -254,20 +254,32 @@ def stream_video_by_path(filename):
         if not VIDEO_ROOT_PATH:
             return jsonify({'error': 'VIDEO_ROOT_PATH not configured'}), 500
         
+        # Security: Decode and normalize path BEFORE joining to prevent traversal attacks
         # Flask's <path:filename> already URL-decodes, but handle any edge cases
-        # Properly decode URL-encoded characters (handles %2F, %20, %26, etc.)
         video_path = unquote(filename)
         
-        # Remove leading ./ if present
-        if video_path.startswith('./'):
-            video_path = video_path[2:]
+        # Normalize the path to resolve any '..' or '.' sequences
+        video_path = os.path.normpath(video_path)
         
-        file_path = os.path.join(VIDEO_ROOT_PATH, video_path)
+        # Security check 1: Reject empty paths or current directory references
+        if not video_path or video_path == '.' or video_path == '':
+            return jsonify({'error': 'Invalid video path'}), 403
         
-        # Security check: ensure path is within VIDEO_ROOT_PATH
+        # Security check 2: Reject absolute paths
+        if os.path.isabs(video_path):
+            return jsonify({'error': 'Invalid video path'}), 403
+        
+        # Security check 3: Reject paths that try to escape using '..'
+        # After normpath, any remaining '..' indicates traversal attempt
+        if video_path.startswith('..') or '/..' in video_path or '\\..\\' in video_path:
+            return jsonify({'error': 'Invalid video path'}), 403
+        
+        # Security check 4: Ensure path is within VIDEO_ROOT_PATH after joining
         abs_video_root = os.path.abspath(VIDEO_ROOT_PATH)
+        file_path = os.path.join(abs_video_root, video_path)
         abs_file_path = os.path.abspath(file_path)
-        if not abs_file_path.startswith(abs_video_root):
+        
+        if not abs_file_path.startswith(abs_video_root + os.sep) and abs_file_path != abs_video_root:
             return jsonify({'error': 'Invalid video path'}), 403
         
         if not os.path.exists(file_path):
@@ -317,7 +329,18 @@ def stream_video(video_id):
     """Stream video by ID with range support for seeking."""
     try:
         video = Video.query.get_or_404(video_id)
-        file_path = os.path.join(VIDEO_ROOT_PATH, video.file_path)
+        
+        # Security: Validate database-sourced path to prevent database poisoning attacks
+        video_path = os.path.normpath(video.file_path)
+        if os.path.isabs(video_path) or video_path.startswith('..'):
+            return jsonify({'error': 'Invalid video path'}), 403
+        
+        abs_video_root = os.path.abspath(VIDEO_ROOT_PATH)
+        file_path = os.path.join(abs_video_root, video_path)
+        abs_file_path = os.path.abspath(file_path)
+        
+        if not abs_file_path.startswith(abs_video_root + os.sep) and abs_file_path != abs_video_root:
+            return jsonify({'error': 'Invalid video path'}), 403
         
         if not os.path.exists(file_path):
             return jsonify({'error': 'Video file not found'}), 404
