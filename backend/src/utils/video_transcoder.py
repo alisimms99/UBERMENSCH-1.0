@@ -35,7 +35,7 @@ def needs_transcoding(file_path):
 
 def get_cache_path(original_path):
     """Generate cache path for transcoded file"""
-    path_hash = hashlib.md5(original_path.encode()).hexdigest()
+    path_hash = hashlib.sha256(original_path.encode()).hexdigest()
     filename = os.path.basename(original_path)
     name, _ = os.path.splitext(filename)
     # Limit filename length for filesystem compatibility
