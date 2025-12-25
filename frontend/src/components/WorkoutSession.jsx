@@ -153,7 +153,7 @@ export default function WorkoutSession({ user }) {
         loadExerciseVideo(exercise?.id)
       }
     }
-  }, [template, currentIndex, selectedVideoIndex[template?.exercises[currentIndex]?.exercise?.id]])
+  }, [template, currentIndex, template?.exercises[currentIndex]?.exercise?.id, selectedVideoIndex[template?.exercises[currentIndex]?.exercise?.id]])
 
   const loadTemplate = async () => {
     setLoading(true)
