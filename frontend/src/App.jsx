@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
-import EnhancedWorkoutSession from './components/EnhancedWorkoutSession'
 import { motion, AnimatePresence } from 'framer-motion'
 import './App.css'
 
 // Import components (we'll create these)
 import Dashboard from './components/Dashboard'
-import Onboarding from './components/Onboarding'
 import WorkoutSession from './components/WorkoutSession'
+import WorkoutDetail from './components/WorkoutDetail'
+import WorkoutTemplates from './components/WorkoutTemplates'
 import Progress from './components/Progress'
 import Profile from './components/Profile'
 import Navigation from './components/Navigation'
@@ -23,7 +23,7 @@ function App() {
   useEffect(() => {
     // Check for existing user or create demo user
     initializeUser()
-    
+
     // Check for dark mode preference
     const savedDarkMode = localStorage.getItem('darkMode') === 'true'
     setDarkMode(savedDarkMode)
@@ -34,35 +34,38 @@ function App() {
 
   const initializeUser = async () => {
     try {
-      // For demo purposes, we'll create a default user
-      // In a real app, this would check authentication
       const users = await apiService.getUsers()
-      
-      if (users.length === 0) {
-        // Create demo user
-        const demoUser = await apiService.createUser({
-          username: 'fitness_user',
-          email: 'user@fittracker.com',
+      if (users.length > 0) {
+        setUser(users[0])
+        localStorage.setItem('user', JSON.stringify(users[0]))
+      } else {
+        // Fallback user
+        const defaultUser = {
+          id: 1,
+          username: 'Ali',
+          email: 'ali@ubermensch.com',
           age: 55,
           weight: 225,
-          height: 70.5
-        })
-        setUser(demoUser)
-      } else {
-        setUser(users[0])
+          height: 70.5,
+          onboarding_completed: true
+        }
+        setUser(defaultUser)
+        localStorage.setItem('user', JSON.stringify(defaultUser))
       }
     } catch (error) {
-      console.error('Failed to initialize user:', error)
-      // Create offline demo user
-      setUser({
-        id: 1,
-        username: 'Demo User',
-        email: 'demo@fittracker.com',
-        age: 55,
-        weight: 225,
-        height: 70.5,
-        onboarding_completed: false
-      })
+      console.error('API error, using fallback:', error)
+      const savedUser = localStorage.getItem('user')
+      if (savedUser) {
+        setUser(JSON.parse(savedUser))
+      } else {
+        setUser({
+          id: 1,
+          username: 'Ali',
+          email: 'ali@ubermensch.com',
+          age: 55,
+          onboarding_completed: true
+        })
+      }
     } finally {
       setLoading(false)
     }
@@ -72,7 +75,7 @@ function App() {
     const newDarkMode = !darkMode
     setDarkMode(newDarkMode)
     localStorage.setItem('darkMode', newDarkMode.toString())
-    
+
     if (newDarkMode) {
       document.documentElement.classList.add('dark')
     } else {
@@ -96,53 +99,60 @@ function App() {
     )
   }
 
-  // If user hasn't completed onboarding, show onboarding flow
-  if (user && !user.onboarding_completed) {
-    return (
-      <div className="min-h-screen bg-background">
-        <Onboarding user={user} setUser={setUser} />
-      </div>
-    )
-  }
-
   return (
     <Router>
       <div className="min-h-screen bg-background">
         <AnimatePresence mode="wait">
           <Routes>
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
-            <Route path="/workout/session/:templateId" element={<EnhancedWorkoutSession />} />
-            <Route 
-              path="/dashboard" 
+            <Route
+              path="/dashboard"
               element={
                 <MainLayout user={user} darkMode={darkMode} toggleDarkMode={toggleDarkMode}>
                   <Dashboard user={user} />
                 </MainLayout>
-              } 
+              }
             />
-            <Route 
-              path="/workout" 
+            <Route
+              path="/workout"
+              element={
+                <MainLayout user={user} darkMode={darkMode} toggleDarkMode={toggleDarkMode}>
+                  <WorkoutTemplates user={user} />
+                </MainLayout>
+              }
+            />
+            {/* Sprint 2 Routes */}
+            <Route
+              path="/workout/template/:templateId"
+              element={
+                <MainLayout user={user} darkMode={darkMode} toggleDarkMode={toggleDarkMode}>
+                  <WorkoutDetail user={user} />
+                </MainLayout>
+              }
+            />
+            <Route
+              path="/workout/session/:templateId"
               element={
                 <MainLayout user={user} darkMode={darkMode} toggleDarkMode={toggleDarkMode}>
                   <WorkoutSession user={user} />
                 </MainLayout>
-              } 
+              }
             />
-            <Route 
-              path="/progress" 
+            <Route
+              path="/progress"
               element={
                 <MainLayout user={user} darkMode={darkMode} toggleDarkMode={toggleDarkMode}>
                   <Progress user={user} />
                 </MainLayout>
-              } 
+              }
             />
-            <Route 
-              path="/profile" 
+            <Route
+              path="/profile"
               element={
                 <MainLayout user={user} darkMode={darkMode} toggleDarkMode={toggleDarkMode}>
                   <Profile user={user} setUser={setUser} />
                 </MainLayout>
-              } 
+              }
             />
           </Routes>
         </AnimatePresence>

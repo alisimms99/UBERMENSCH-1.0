@@ -24,7 +24,7 @@ const VideoPlayer = ({
   const [error, setError] = useState(null);
 
   // Video URL construction
-  const videoUrl = video ? `http://localhost:5001/api/videos/stream/${video.id}` : null;
+  const videoUrl = video ? `http://localhost:5180/api/videos/stream/${video.id}` : null;
 
   useEffect(() => {
     if (autoPlay && videoRef.current) {

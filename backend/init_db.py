@@ -12,8 +12,11 @@ from datetime import datetime
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 
 from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
-from src.models.user import db, User, Exercise, WorkoutTemplate, Workout, WorkoutExercise, ProgressEntry, Achievement, UserAchievement
+from src.models import (
+    db, User, Achievement, Supplement
+)
+from src.data.enhanced_seed_templates import create_enhanced_workout_templates, create_enhanced_exercises
+import json
 
 def create_app():
     """Create Flask app for database initialization."""
@@ -45,99 +48,26 @@ def init_database():
         
         print("Tables created successfully!")
         
-        # Create sample exercises
-        exercises = [
-            Exercise(
-                name="Pushups",
-                category="upper_body",
-                description="Standard pushup exercise for chest, shoulders, and triceps",
-                instructions="Start in plank position, lower body to ground, push back up",
-                is_timed=False,
-                is_reps=True,
-                is_distance=False,
-                default_rest_seconds=60
-            ),
-            Exercise(
-                name="Situps",
-                category="core_lower",
-                description="Basic abdominal exercise",
-                instructions="Lie on back, knees bent, hands behind head, sit up",
-                is_timed=False,
-                is_reps=True,
-                is_distance=False,
-                default_rest_seconds=60
-            ),
-            Exercise(
-                name="Plank",
-                category="core_lower",
-                description="Isometric core strengthening exercise",
-                instructions="Hold plank position with straight body line",
-                is_timed=True,
-                is_reps=False,
-                is_distance=False,
-                default_rest_seconds=60
-            ),
-            Exercise(
-                name="Squats",
-                category="functional",
-                description="Basic lower body exercise",
-                instructions="Stand with feet shoulder-width apart, lower into squat position",
-                is_timed=False,
-                is_reps=True,
-                is_distance=False,
-                default_rest_seconds=60
-            ),
-            Exercise(
-                name="Walking",
-                category="walking",
-                description="Low-impact cardiovascular exercise",
-                instructions="Walk at a steady pace for the specified duration",
-                is_timed=True,
-                is_reps=False,
-                is_distance=True,
-                default_rest_seconds=0
-            )
-        ]
+        # Seed Exercises first, then Templates
+        print("Seeding exercises...")
+        exercises_result = create_enhanced_exercises()
+        if not exercises_result.get('success', False):
+            error_msg = exercises_result.get('error', 'Unknown error')
+            print(f"ERROR: Failed to create exercises: {error_msg}. Cannot proceed with template seeding.")
+            return
+        print(f"Successfully created {exercises_result.get('count', 0)} exercises.")
         
-        for exercise in exercises:
-            db.session.add(exercise)
-        
-        # Create sample workout template
-        template = WorkoutTemplate(
-            name="Basic Fitness",
-            description="A simple workout for beginners",
-            estimated_duration=30,
-            difficulty_level="beginner",
-            exercises_config='[{"exercise_id": 1, "reps": 5, "sets": 1}, {"exercise_id": 2, "reps": 5, "sets": 1}, {"exercise_id": 3, "duration": 30, "sets": 1}]'
-        )
-        db.session.add(template)
+        print("Seeding workout templates...")
+        templates_result = create_enhanced_workout_templates()
+        if not templates_result:
+            print("ERROR: Failed to create workout templates.")
+            return
         
         # Create sample achievements
         achievements = [
-            Achievement(
-                name="First Workout",
-                description="Complete your first workout",
-                category="milestone",
-                criteria='{"type": "workout_count", "value": 1}',
-                xp_reward=10,
-                badge_icon="trophy"
-            ),
-            Achievement(
-                name="Week Warrior",
-                description="Complete 7 workouts",
-                category="milestone",
-                criteria='{"type": "workout_count", "value": 7}',
-                xp_reward=50,
-                badge_icon="calendar"
-            ),
-            Achievement(
-                name="Pushup Pro",
-                description="Complete 100 pushups in a single workout",
-                category="progression",
-                criteria='{"type": "single_exercise", "exercise": "pushups", "value": 100}',
-                xp_reward=100,
-                badge_icon="muscle"
-            )
+            Achievement(name="First Workout"),
+            Achievement(name="Week Warrior"),
+            Achievement(name="Pushup Pro")
         ]
         
         for achievement in achievements:
@@ -145,34 +75,90 @@ def init_database():
         
         # Create demo user
         demo_user = User(
-            username="demo_user",
-            email="demo@fittracker.com",
+            username="Ali",
+            email="ali@ubermensch.com",
             age=55,
             weight=225.0,
             height=70.5,
             target_pushups=50,
             target_situps=50,
             target_daily_steps=10000,
-            initial_max_pushups=5,
-            initial_max_situps=5,
-            initial_plank_duration=30,
-            current_pushup_target=5,
-            current_situp_target=5,
-            current_plank_target=30,
             preferred_workout_duration=60,
             workouts_per_week=3,
             onboarding_completed=True,
             created_at=datetime.utcnow()
         )
         db.session.add(demo_user)
-        
-        # Commit all changes
         db.session.commit()
         
-        print("Sample data added successfully!")
-        print(f"Database initialized at: {app.config['SQLALCHEMY_DATABASE_URI']}")
-        print("Demo user created: demo_user")
+        # --- Add Supplements (Sprint 1) ---
+        user_id = demo_user.id
+        supplements = [
+            Supplement(
+                user_id=user_id,
+                name="TRT",
+                dosage="varies",
+                category="hormone",
+                schedule_json=json.dumps({"frequency": "weekly", "times": ["morning"]}),
+                form="injection"
+            ),
+            Supplement(
+                user_id=user_id,
+                name="Magnesium Glycinate",
+                brand="Pure Encapsulations",
+                dosage="400mg",
+                category="mineral",
+                schedule_json=json.dumps({"frequency": "daily", "times": ["evening"]}),
+                form="capsule",
+                inventory_json=json.dumps({"quantity_remaining": 60, "reorder_threshold": 10})
+            ),
+            Supplement(
+                user_id=user_id,
+                name="Omega-3 Fish Oil",
+                dosage="2000mg",
+                category="fatty acid",
+                schedule_json=json.dumps({"frequency": "daily", "times": ["with_meal"]}),
+                form="capsule"
+            ),
+            Supplement(
+                user_id=user_id,
+                name="Sea Moss",
+                dosage="1 tbsp",
+                category="superfood",
+                schedule_json=json.dumps({"frequency": "daily", "times": ["morning"]}),
+                form="gel"
+            ),
+            Supplement(
+                user_id=user_id,
+                name="Vitamin D3",
+                dosage="5000 IU",
+                category="vitamin",
+                schedule_json=json.dumps({"frequency": "daily", "times": ["morning"]}),
+                form="capsule"
+            ),
+            Supplement(
+                user_id=user_id,
+                name="Zinc",
+                dosage="30mg",
+                category="mineral",
+                schedule_json=json.dumps({"frequency": "daily", "times": ["with_meal"]}),
+                form="capsule"
+            ),
+            Supplement(
+                user_id=user_id,
+                name="B-Complex",
+                brand="Methylated",
+                category="vitamin",
+                schedule_json=json.dumps({"frequency": "daily", "times": ["morning"]}),
+                form="capsule"
+            )
+        ]
+        
+        for supp in supplements:
+            db.session.add(supp)
+            
+        db.session.commit()
+        print("Database initialized successfully!")
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     init_database()
-
