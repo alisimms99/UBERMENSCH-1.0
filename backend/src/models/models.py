@@ -110,6 +110,22 @@ class WorkoutTemplateExercise(db.Model):
     
     def to_dict(self):
         # Merge exercise details with template overrides
+        # Safety check: ensure exercise relationship exists before accessing
+        if not self.exercise:
+            # Fallback if exercise is deleted or relationship is broken
+            return {
+                'id': self.id,
+                'exercise_id': self.exercise_id,
+                'exercise': None,
+                'phase': self.phase,
+                'sort_order': self.sort_order,
+                'target_reps': self.target_reps,
+                'target_sets': self.target_sets,
+                'target_duration_seconds': self.target_duration_seconds,
+                'rest_seconds': self.rest_seconds,
+                'error': 'Exercise not found'
+            }
+        
         base_exercise = self.exercise.to_dict()
         return {
             'id': self.id,

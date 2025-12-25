@@ -519,6 +519,7 @@ export default function WorkoutSession({ user }) {
               variant="outline"
               size="lg"
               onClick={handleSkip}
+              disabled={currentIndex >= template.exercises.length - 1}
               className="flex-1"
             >
               <SkipForward className="w-4 h-4 mr-2" />
@@ -528,11 +529,19 @@ export default function WorkoutSession({ user }) {
               variant="outline"
               size="lg"
               onClick={handleNext}
-              disabled={currentIndex >= template.exercises.length - 1}
               className="flex-1"
             >
-              Next
-              <CheckCircle className="w-4 h-4 ml-2" />
+              {currentIndex >= template.exercises.length - 1 ? (
+                <>
+                  Complete Workout
+                  <CheckCircle className="w-4 h-4 ml-2" />
+                </>
+              ) : (
+                <>
+                  Next
+                  <CheckCircle className="w-4 h-4 ml-2" />
+                </>
+              )}
             </Button>
           </div>
         </Card>

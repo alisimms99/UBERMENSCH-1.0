@@ -48,9 +48,18 @@ def init_database():
         
         print("Tables created successfully!")
         
-        # Seed Templates and Exercises using enhanced script
+        # Seed Exercises first, then Templates
+        print("Seeding exercises...")
+        exercises_result = create_enhanced_exercises()
+        if not exercises_result:
+            print("ERROR: Failed to create exercises. Cannot proceed with template seeding.")
+            return
+        
         print("Seeding workout templates...")
-        create_enhanced_workout_templates()
+        templates_result = create_enhanced_workout_templates()
+        if not templates_result:
+            print("ERROR: Failed to create workout templates.")
+            return
         
         # Create sample achievements
         achievements = [

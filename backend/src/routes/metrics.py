@@ -7,7 +7,11 @@ metrics_bp = Blueprint('metrics', __name__)
 
 @metrics_bp.route('/daily/<date_str>', methods=['GET'])
 def get_daily_metrics(date_str):
-    target_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+    try:
+        target_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+    except ValueError:
+        return jsonify({'error': 'Invalid date format. Use YYYY-MM-DD'}), 400
+    
     user_id = request.args.get('user_id', 1)
     
     metrics = DailyMetrics.query.filter_by(user_id=user_id, date=target_date).first()
@@ -21,7 +25,14 @@ def get_daily_metrics(date_str):
 def save_morning_checkin():
     data = request.json
     date_str = data.get('date')
-    target_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+    if not date_str:
+        return jsonify({'error': 'Date parameter is required'}), 400
+    
+    try:
+        target_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+    except ValueError:
+        return jsonify({'error': 'Invalid date format. Use YYYY-MM-DD'}), 400
+    
     user_id = data.get('user_id', 1)
     
     metrics = DailyMetrics.query.filter_by(user_id=user_id, date=target_date).first()
@@ -47,7 +58,14 @@ def save_morning_checkin():
 def save_evening_checkin():
     data = request.json
     date_str = data.get('date')
-    target_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+    if not date_str:
+        return jsonify({'error': 'Date parameter is required'}), 400
+    
+    try:
+        target_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+    except ValueError:
+        return jsonify({'error': 'Invalid date format. Use YYYY-MM-DD'}), 400
+    
     user_id = data.get('user_id', 1)
     
     metrics = DailyMetrics.query.filter_by(user_id=user_id, date=target_date).first()
@@ -74,7 +92,14 @@ def update_day_metrics():
     # Update throughout day metrics (water, steps, etc)
     data = request.json
     date_str = data.get('date')
-    target_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+    if not date_str:
+        return jsonify({'error': 'Date parameter is required'}), 400
+    
+    try:
+        target_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+    except ValueError:
+        return jsonify({'error': 'Invalid date format. Use YYYY-MM-DD'}), 400
+    
     user_id = data.get('user_id', 1)
     
     metrics = DailyMetrics.query.filter_by(user_id=user_id, date=target_date).first()
