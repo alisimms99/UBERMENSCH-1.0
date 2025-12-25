@@ -314,7 +314,8 @@ def stream_video_by_path(filename):
                 logger.error(f"Previous transcoding job failed: {file_path}")
                 # Fall through to retry
         
-        # Check if cache is being created (temp file exists - fallback check)
+        # Fallback check: temp file exists but no RQ job (handles race conditions
+        # or cases where Redis became unavailable after transcoding started)
         if os.path.exists(cache_path + '.tmp'):
             # Transcoding in progress - return 202 Accepted with retry-after
             return jsonify({
@@ -499,7 +500,8 @@ def trigger_transcode():
                 'job': job_status
             })
         
-        # Check if already transcoding (fallback check)
+        # Fallback check: temp file exists but no RQ job (handles cases
+        # where Redis became unavailable after transcoding started)
         if os.path.exists(cache_path + '.tmp'):
             return jsonify({
                 'status': 'in_progress',

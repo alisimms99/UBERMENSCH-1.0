@@ -72,7 +72,7 @@ def enqueue_transcode_job(input_path, output_path):
             if existing_job and existing_job.get_status() in ['queued', 'started']:
                 logger.info(f"Transcoding job already exists: {job_id}")
                 return existing_job
-        except:
+        except Exception:
             pass  # Job doesn't exist, create new one
         
         job = queue.enqueue(
