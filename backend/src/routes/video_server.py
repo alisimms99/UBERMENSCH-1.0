@@ -254,6 +254,21 @@ def stream_video_by_path(filename):
         if not VIDEO_ROOT_PATH:
             return jsonify({'error': 'VIDEO_ROOT_PATH not configured'}), 500
         
+        # Input validation: Check for null bytes
+        if '\x00' in filename:
+            logger.warning(f"Rejected filename with null byte: {repr(filename)}")
+            return jsonify({'error': 'Invalid filename'}), 400
+        
+        # Input validation: Check for extremely long paths (typical filesystem limit is 4096)
+        if len(filename) > 4096:
+            logger.warning(f"Rejected excessively long filename (length={len(filename)})")
+            return jsonify({'error': 'Filename too long'}), 400
+        
+        # Input validation: Check for control characters (ASCII 0-31 except tab, newline, carriage return)
+        if any(ord(c) < 32 and c not in '\t\n\r' for c in filename):
+            logger.warning(f"Rejected filename with control characters: {repr(filename)}")
+            return jsonify({'error': 'Invalid filename'}), 400
+        
         # Flask's <path:filename> already URL-decodes, but handle any edge cases
         # Properly decode URL-encoded characters (handles %2F, %20, %26, etc.)
         video_path = unquote(filename)
