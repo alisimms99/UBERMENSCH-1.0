@@ -16,8 +16,10 @@ TRANSCODE_CACHE_DIR = os.environ.get('TRANSCODE_CACHE_DIR', '/tmp/ubermensch_vid
 CACHE_SIZE_LIMIT = int(os.environ.get('TRANSCODE_CACHE_SIZE_LIMIT', 10 * 1024 * 1024 * 1024))
 # Cache TTL in seconds (default: 30 days)
 CACHE_TTL = int(os.environ.get('TRANSCODE_CACHE_TTL', 30 * 24 * 60 * 60))
-# Metadata file for tracking cache usage
-CACHE_METADATA_FILE = os.path.join(TRANSCODE_CACHE_DIR, '.cache_metadata.json')
+
+def get_metadata_file_path():
+    """Get the path to the cache metadata file"""
+    return os.path.join(TRANSCODE_CACHE_DIR, '.cache_metadata.json')
 
 def get_video_codec(file_path):
     """Get the video codec of a file using ffprobe"""
@@ -57,24 +59,39 @@ def ensure_cache_dir():
 
 def load_cache_metadata():
     """Load cache metadata from file"""
-    if not os.path.exists(CACHE_METADATA_FILE):
+    metadata_file = get_metadata_file_path()
+    if not os.path.exists(metadata_file):
         return {}
     
     try:
-        with open(CACHE_METADATA_FILE, 'r') as f:
+        with open(metadata_file, 'r') as f:
             return json.load(f)
     except Exception as e:
         logger.warning(f"Failed to load cache metadata: {e}")
         return {}
 
 def save_cache_metadata(metadata):
-    """Save cache metadata to file"""
+    """Save cache metadata to file atomically"""
     ensure_cache_dir()
+    metadata_file = get_metadata_file_path()
+    
     try:
-        with open(CACHE_METADATA_FILE, 'w') as f:
+        # Write to temp file first for atomic operation
+        temp_file = metadata_file + '.tmp'
+        with open(temp_file, 'w') as f:
             json.dump(metadata, f, indent=2)
+        
+        # Atomic rename
+        os.replace(temp_file, metadata_file)
     except Exception as e:
         logger.error(f"Failed to save cache metadata: {e}")
+        # Clean up temp file if it exists
+        temp_file = metadata_file + '.tmp'
+        if os.path.exists(temp_file):
+            try:
+                os.remove(temp_file)
+            except:
+                pass
 
 def update_cache_metadata(cache_path, original_path):
     """Update metadata for a cached file"""
@@ -114,11 +131,8 @@ def get_cache_size():
             if actual_size != info.get('size', 0):
                 info['size'] = actual_size
             total_size += info['size']
-        else:
-            # File was deleted externally, remove from metadata
-            logger.debug(f"Removing stale metadata entry: {cache_path}")
     
-    # Clean up stale entries
+    # Clean up stale entries (files deleted externally)
     metadata = {k: v for k, v in metadata.items() if os.path.exists(k)}
     save_cache_metadata(metadata)
     
@@ -164,9 +178,12 @@ def cleanup_cache(force=False):
     current_size = get_cache_size()
     
     if force or current_size > CACHE_SIZE_LIMIT:
+        # Get files to remove (for O(1) lookup)
+        files_to_remove_set = {f[0] for f in files_to_remove}
+        
         # Sort files by last accessed time (oldest first)
         remaining_files = [(path, info) for path, info in metadata.items() 
-                          if path not in [f[0] for f in files_to_remove]]
+                          if path not in files_to_remove_set]
         
         remaining_files.sort(key=lambda x: x[1].get('last_accessed', 0))
         

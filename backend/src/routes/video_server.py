@@ -9,6 +9,7 @@ from urllib.parse import unquote
 import os
 import mimetypes
 import json
+import time
 from datetime import datetime
 import subprocess
 import re
@@ -290,13 +291,23 @@ def stream_video_by_path(filename):
         cache_path = get_cache_path(file_path)
         
         # Check if cache is being created (temp file exists)
-        if os.path.exists(cache_path + '.tmp'):
-            # Transcoding in progress - return 202 Accepted with retry-after
-            return jsonify({
-                'error': 'Video is being prepared for playback',
-                'status': 'transcoding',
-                'message': 'Please wait and try again in a moment'
-            }), 202
+        temp_path = cache_path + '.tmp'
+        if os.path.exists(temp_path):
+            # Check if temp file is stale (older than 1 hour)
+            temp_age = time.time() - os.path.getmtime(temp_path)
+            if temp_age > 3600:  # 1 hour
+                logger.warning(f"Removing stale temp file: {temp_path}")
+                try:
+                    os.remove(temp_path)
+                except Exception as e:
+                    logger.error(f"Failed to remove stale temp file: {e}")
+            else:
+                # Transcoding in progress - return 202 Accepted with retry-after
+                return jsonify({
+                    'error': 'Video is being prepared for playback',
+                    'status': 'transcoding',
+                    'message': 'Please wait and try again in a moment'
+                }), 202
         
         # Start transcoding (this will block - consider async for large files)
         logger.info(f"Starting transcoding for: {file_path}")
