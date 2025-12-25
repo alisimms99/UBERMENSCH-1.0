@@ -6,7 +6,6 @@ import './App.css'
 
 // Import components (we'll create these)
 import Dashboard from './components/Dashboard'
-import Onboarding from './components/Onboarding'
 import WorkoutSession from './components/WorkoutSession'
 import WorkoutDetail from './components/WorkoutDetail'
 import Progress from './components/Progress'
@@ -34,19 +33,42 @@ function App() {
   }, [])
 
   const initializeUser = async () => {
-    // TEMPORARY: Skip API, use local user
-    const offlineUser = {
-      id: 1,
-      username: 'Ali',
-      email: 'ali@ubermensch.com',
-      age: 55,
-      weight: 225,
-      height: 70.5,
-      onboarding_completed: true
+    try {
+      const users = await apiService.getUsers()
+      if (users.length > 0) {
+        setUser(users[0])
+        localStorage.setItem('user', JSON.stringify(users[0]))
+      } else {
+        // Fallback user
+        const defaultUser = {
+          id: 1,
+          username: 'Ali',
+          email: 'ali@ubermensch.com',
+          age: 55,
+          weight: 225,
+          height: 70.5,
+          onboarding_completed: true
+        }
+        setUser(defaultUser)
+        localStorage.setItem('user', JSON.stringify(defaultUser))
+      }
+    } catch (error) {
+      console.error('API error, using fallback:', error)
+      const savedUser = localStorage.getItem('user')
+      if (savedUser) {
+        setUser(JSON.parse(savedUser))
+      } else {
+        setUser({
+          id: 1,
+          username: 'Ali',
+          email: 'ali@ubermensch.com',
+          age: 55,
+          onboarding_completed: true
+        })
+      }
+    } finally {
+      setLoading(false)
     }
-    setUser(offlineUser)
-    localStorage.setItem('user', JSON.stringify(offlineUser))
-    setLoading(false)
   }
 
   const toggleDarkMode = () => {
@@ -73,15 +95,6 @@ function App() {
           <h2 className="text-2xl font-bold text-foreground">Loading FitTracker...</h2>
           <p className="text-muted-foreground">Preparing your fitness journey</p>
         </motion.div>
-      </div>
-    )
-  }
-
-  // If user hasn't completed onboarding, show onboarding flow
-  if (user && !user.onboarding_completed) {
-    return (
-      <div className="min-h-screen bg-background">
-        <Onboarding user={user} setUser={setUser} />
       </div>
     )
   }

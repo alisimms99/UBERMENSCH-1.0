@@ -5,7 +5,6 @@ import './App.css'
 
 // Import components
 import Dashboard from './components/Dashboard'
-import Onboarding from './components/Onboarding'
 import WorkoutSession from './components/WorkoutSession'
 import Progress from './components/Progress'
 import Profile from './components/Profile'
@@ -179,17 +178,6 @@ function AppContent() {
             Try Again
           </button>
         </motion.div>
-      </div>
-    )
-  }
-
-  // If user hasn't completed onboarding, show onboarding flow
-  if (user && !user.onboarding_completed) {
-    return (
-      <div className="min-h-screen bg-background">
-        <ErrorBoundary>
-          <Onboarding user={user} setUser={updateUser} />
-        </ErrorBoundary>
       </div>
     )
   }
