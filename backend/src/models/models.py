@@ -84,7 +84,67 @@ class Exercise(db.Model):
     video_mappings = db.relationship('WorkoutVideoMapping', backref='exercise', lazy=True)
     template_associations = db.relationship('WorkoutTemplateExercise', backref='exercise', lazy=True, cascade="all, delete-orphan")
 
+    @staticmethod
+    def validate_video_paths(video_paths):
+        """
+        Validate the structure of video_paths JSON.
+        Expected format: [{"path": str, "name": str, ...}, ...]
+        Returns: tuple (is_valid, validated_data_or_error_msg)
+        """
+        if video_paths is None:
+            return True, None
+        
+        if not isinstance(video_paths, list):
+            return False, "video_paths must be an array"
+        
+        validated = []
+        for idx, video in enumerate(video_paths):
+            if not isinstance(video, dict):
+                return False, f"video_paths[{idx}] must be an object"
+            
+            # Check required fields
+            if 'path' not in video:
+                return False, f"video_paths[{idx}] missing required field 'path'"
+            
+            if not isinstance(video['path'], str) or not video['path']:
+                return False, f"video_paths[{idx}].path must be a non-empty string"
+            
+            # Validate optional fields if present
+            validated_video = {'path': video['path']}
+            
+            if 'name' in video:
+                if not isinstance(video['name'], str):
+                    return False, f"video_paths[{idx}].name must be a string"
+                validated_video['name'] = video['name']
+            
+            if 'codec' in video:
+                if not isinstance(video['codec'], str):
+                    return False, f"video_paths[{idx}].codec must be a string"
+                validated_video['codec'] = video['codec']
+            
+            if 'size' in video:
+                if not isinstance(video['size'], str):
+                    return False, f"video_paths[{idx}].size must be a string"
+                validated_video['size'] = video['size']
+            
+            if 'is_default' in video:
+                if not isinstance(video['is_default'], bool):
+                    return False, f"video_paths[{idx}].is_default must be a boolean"
+                validated_video['is_default'] = video['is_default']
+            
+            validated.append(validated_video)
+        
+        return True, validated
+
     def to_dict(self):
+        # Validate and sanitize video_paths before returning
+        validated_video_paths = []
+        if self.video_paths is not None:
+            is_valid, result = self.validate_video_paths(self.video_paths)
+            if is_valid:
+                validated_video_paths = result if result is not None else []
+            # If invalid, return empty array to prevent frontend errors
+        
         return {
             'id': self.id,
             'name': self.name,
@@ -98,7 +158,7 @@ class Exercise(db.Model):
             'default_duration_seconds': self.default_duration_seconds,
             'default_rest_seconds': self.default_rest_seconds,
             'video_path': self.video_path,
-            'video_paths': self.video_paths if self.video_paths is not None else []
+            'video_paths': validated_video_paths
         }
 
 class WorkoutTemplateExercise(db.Model):

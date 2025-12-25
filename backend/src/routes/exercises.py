@@ -18,6 +18,16 @@ def get_exercises():
 def create_exercise():
     """Create a new exercise"""
     data = request.json
+    
+    # Validate video_paths if provided
+    if 'video_paths' in data and data['video_paths'] is not None:
+        is_valid, result = Exercise.validate_video_paths(data['video_paths'])
+        if not is_valid:
+            return jsonify({'error': f'Invalid video_paths: {result}'}), 400
+        validated_video_paths = result
+    else:
+        validated_video_paths = None
+    
     exercise = Exercise(
         name=data['name'],
         category=data['category'],
@@ -26,7 +36,9 @@ def create_exercise():
         is_timed=data.get('is_timed', False),
         is_reps=data.get('is_reps', True),
         is_distance=data.get('is_distance', False),
-        default_rest_seconds=data.get('default_rest_seconds', 60)
+        default_rest_seconds=data.get('default_rest_seconds', 60),
+        video_path=data.get('video_path'),
+        video_paths=validated_video_paths
     )
     db.session.add(exercise)
     db.session.commit()
@@ -52,6 +64,17 @@ def update_exercise(exercise_id):
     exercise.is_reps = data.get('is_reps', exercise.is_reps)
     exercise.is_distance = data.get('is_distance', exercise.is_distance)
     exercise.default_rest_seconds = data.get('default_rest_seconds', exercise.default_rest_seconds)
+    
+    # Validate video_paths if provided
+    if 'video_paths' in data:
+        is_valid, result = Exercise.validate_video_paths(data['video_paths'])
+        if not is_valid:
+            return jsonify({'error': f'Invalid video_paths: {result}'}), 400
+        exercise.video_paths = result
+    
+    # Validate and update video_path if provided
+    if 'video_path' in data:
+        exercise.video_path = data['video_path']
     
     db.session.commit()
     return jsonify(exercise.to_dict())
