@@ -5,6 +5,8 @@ import subprocess
 import os
 import hashlib
 import logging
+import fcntl
+import errno
 
 logger = logging.getLogger(__name__)
 
@@ -50,13 +52,42 @@ def transcode_to_h264(input_path, output_path):
     """
     Transcode video to H.264/AAC for browser playback
     Uses 'fast' preset for reasonable speed/quality balance
+    
+    Returns:
+        True if transcoding succeeded (or already in progress by another process)
+        False if transcoding failed
+        None if another process is already transcoding (caller should retry)
     """
     ensure_cache_dir()
     
     # Create temp file first, then rename (atomic operation)
     temp_path = output_path + '.tmp'
+    lock_path = output_path + '.lock'
+    
+    # Try to acquire exclusive lock to prevent race condition
+    try:
+        lock_file = open(lock_path, 'w')
+        fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except IOError as e:
+        if e.errno == errno.EWOULDBLOCK:
+            # Another process is transcoding, return None to signal retry
+            logger.info(f"Another process is already transcoding: {input_path}")
+            return None
+        else:
+            logger.error(f"Failed to acquire lock: {e}")
+            return False
     
     try:
+        # Double-check if output already exists (another process may have finished)
+        if os.path.exists(output_path):
+            logger.info(f"Transcode already complete: {output_path}")
+            return True
+        
+        # Check if temp file exists from a previous failed attempt
+        if os.path.exists(temp_path):
+            logger.warning(f"Removing stale temp file: {temp_path}")
+            os.remove(temp_path)
+        
         logger.info(f"Transcoding: {input_path}")
         result = subprocess.run([
             'ffmpeg', '-i', input_path,
@@ -68,7 +99,7 @@ def transcode_to_h264(input_path, output_path):
             temp_path
         ], check=True, capture_output=True, text=True, timeout=3600)  # 1 hour timeout
         
-        # Rename temp to final
+        # Rename temp to final (atomic on same filesystem)
         os.rename(temp_path, output_path)
         logger.info(f"Transcoding complete: {output_path}")
         return True
@@ -88,6 +119,15 @@ def transcode_to_h264(input_path, output_path):
         if os.path.exists(temp_path):
             os.remove(temp_path)
         return False
+    finally:
+        # Release lock and cleanup
+        try:
+            fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
+            lock_file.close()
+            if os.path.exists(lock_path):
+                os.remove(lock_path)
+        except Exception as e:
+            logger.error(f"Error releasing lock: {e}")
 
 def get_playable_path(original_path):
     """

@@ -284,24 +284,28 @@ def stream_video_by_path(filename):
             logger.debug(f"Serving playable video: {playable_path}")
             return send_file_partial(playable_path)
         
-        # Need to transcode - check if transcoding is in progress or start it
+        # Need to transcode - attempt to start transcoding with file locking
         cache_path = get_cache_path(file_path)
         
-        # Check if cache is being created (temp file exists)
-        if os.path.exists(cache_path + '.tmp'):
-            # Transcoding in progress - return 202 Accepted with retry-after
+        # Start transcoding (this will block - consider async for large files)
+        # The function now uses file locking to prevent race conditions
+        logger.info(f"Starting transcoding for: {file_path}")
+        result = transcode_to_h264(file_path, cache_path)
+        
+        if result is True:
+            # Transcoding succeeded
+            logger.info(f"Transcoding complete, serving: {cache_path}")
+            return send_file_partial(cache_path)
+        elif result is None:
+            # Another process is already transcoding - return 202 Accepted
+            logger.info(f"Another process is transcoding: {file_path}")
             return jsonify({
                 'error': 'Video is being prepared for playback',
                 'status': 'transcoding',
                 'message': 'Please wait and try again in a moment'
             }), 202
-        
-        # Start transcoding (this will block - consider async for large files)
-        logger.info(f"Starting transcoding for: {file_path}")
-        if transcode_to_h264(file_path, cache_path):
-            logger.info(f"Transcoding complete, serving: {cache_path}")
-            return send_file_partial(cache_path)
         else:
+            # Transcoding failed
             logger.error(f"Transcoding failed for: {file_path}")
             return jsonify({
                 'error': 'Video transcoding failed',
@@ -392,12 +396,12 @@ def transcode_status(filename):
         needs_tc = needs_transcoding(file_path)
         cache_path = get_cache_path(file_path)
         cache_exists = os.path.exists(cache_path)
-        transcoding_in_progress = os.path.exists(cache_path + '.tmp')
+        lock_exists = os.path.exists(cache_path + '.lock')
         
         return jsonify({
             'needs_transcoding': needs_tc,
             'cache_exists': cache_exists,
-            'transcoding_in_progress': transcoding_in_progress,
+            'transcoding_in_progress': lock_exists,
             'ready': not needs_tc or cache_exists,
             'codec': get_video_codec(file_path) if needs_tc else 'h264'
         })
@@ -441,22 +445,21 @@ def trigger_transcode():
                 'cache_path': cache_path
             })
         
-        # Check if already transcoding
-        if os.path.exists(cache_path + '.tmp'):
-            return jsonify({
-                'status': 'in_progress',
-                'message': 'Transcoding already in progress'
-            })
-        
         # Start transcoding (synchronous - consider async for production)
+        # File locking prevents race conditions
         logger.info(f"Triggering transcoding for: {file_path}")
-        success = transcode_to_h264(file_path, cache_path)
+        result = transcode_to_h264(file_path, cache_path)
         
-        if success:
+        if result is True:
             return jsonify({
                 'status': 'complete',
                 'message': 'Transcoding completed successfully',
                 'cache_path': cache_path
+            })
+        elif result is None:
+            return jsonify({
+                'status': 'in_progress',
+                'message': 'Transcoding already in progress by another process'
             })
         else:
             return jsonify({
