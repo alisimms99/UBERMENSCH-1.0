@@ -88,7 +88,6 @@ export default function WorkoutSession({ user }) {
       const selectedVideo = exercise.video_paths[index]
       if (selectedVideo?.path) {
         const url = `${apiUrl}/api/videos/stream/${encodeURIComponent(selectedVideo.path)}`
-        console.log(`Video URL (${selectedVideo.name}):`, url)
         return url
       }
     }
@@ -96,11 +95,9 @@ export default function WorkoutSession({ user }) {
     // Fallback to single video_path
     if (exercise?.video_path) {
       const url = `${apiUrl}/api/videos/stream/${encodeURIComponent(exercise.video_path)}`
-      console.log('Video URL (single):', url)
       return url
     }
     
-    console.log('No video_path for exercise:', exercise?.name)
     return null
   }
   
@@ -159,9 +156,7 @@ export default function WorkoutSession({ user }) {
     setLoading(true)
     setError(null)
     try {
-      console.log('Loading template with ID:', templateId)
       const data = await apiService.getWorkoutTemplate(templateId)
-      console.log('Template loaded:', data)
       
       if (!data) {
         throw new Error('Template data is empty')
@@ -177,7 +172,6 @@ export default function WorkoutSession({ user }) {
         setTimer(data.exercises[0].target_duration_seconds || 0)
       }
     } catch (error) {
-      console.error("Failed to load session:", error)
       setError(error.message || 'Failed to load workout template')
     } finally {
       setLoading(false)
@@ -212,7 +206,6 @@ export default function WorkoutSession({ user }) {
         setCurrentVideo(null)
       }
     } catch (error) {
-      console.error('Failed to load exercise video:', error)
       setCurrentVideo(null)
     }
   }
@@ -463,15 +456,6 @@ export default function WorkoutSession({ user }) {
             const exercise = currentItem.exercise
             const hasVideoPath = exercise?.video_path || (exercise?.video_paths && exercise.video_paths.length > 0)
             const currentVideoIndex = getSelectedVideoIndex(exercise)
-            
-            console.log('Rendering video player:', {
-              exerciseName: exercise?.name,
-              hasVideoPath,
-              videoPath: exercise?.video_path,
-              videoPaths: exercise?.video_paths?.length || 0,
-              selectedIndex: currentVideoIndex,
-              currentVideo: currentVideo
-            })
             
             if (hasVideoPath) {
               const videoUrl = getVideoUrl(exercise, currentVideoIndex)
