@@ -8,6 +8,7 @@ import Input from '@/components/ui/input'
 import { Play, Pause, SkipForward, CheckCircle, Clock, ArrowLeft, X, LogOut } from 'lucide-react'
 import { apiService } from '../lib/api'
 import VideoPlayer from './VideoPlayer'
+import { API_URL } from '../config/api'
 
 export default function WorkoutSession({ user }) {
   const { templateId } = useParams()
@@ -74,7 +75,6 @@ export default function WorkoutSession({ user }) {
 
   // Get video URL for current exercise (supports video_paths array or single video_path)
   const getVideoUrl = (exercise, videoIndex = null) => {
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5180'
     
     // Check if exercise has multiple video options
     if (exercise?.video_paths && Array.isArray(exercise.video_paths) && exercise.video_paths.length > 0) {
@@ -87,7 +87,7 @@ export default function WorkoutSession({ user }) {
       
       const selectedVideo = exercise.video_paths[index]
       if (selectedVideo?.path) {
-        const url = `${apiUrl}/api/videos/stream/${encodeURIComponent(selectedVideo.path)}`
+        const url = `${API_URL}/api/videos/stream/${encodeURIComponent(selectedVideo.path)}`
         console.log(`Video URL (${selectedVideo.name}):`, url)
         return url
       }
@@ -95,7 +95,7 @@ export default function WorkoutSession({ user }) {
     
     // Fallback to single video_path
     if (exercise?.video_path) {
-      const url = `${apiUrl}/api/videos/stream/${encodeURIComponent(exercise.video_path)}`
+      const url = `${API_URL}/api/videos/stream/${encodeURIComponent(exercise.video_path)}`
       console.log('Video URL (single):', url)
       return url
     }
@@ -197,7 +197,7 @@ export default function WorkoutSession({ user }) {
     }
 
     try {
-      const response = await fetch(`http://localhost:5180/api/videos/exercise/${exerciseId}/videos`)
+      const response = await fetch(`${API_URL}/api/videos/exercise/${exerciseId}/videos`)
       if (response.ok) {
         const data = await response.json()
         // Get primary video or first video

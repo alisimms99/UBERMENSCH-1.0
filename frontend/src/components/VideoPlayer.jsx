@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Play, Pause, Volume2, VolumeX, Maximize, RotateCcw, Settings, ExternalLink } from 'lucide-react';
+import { API_URL } from '../config/api';
 
 const VideoPlayer = ({ 
   video, 
@@ -37,14 +38,12 @@ const VideoPlayer = ({
       return video.streaming_url
     }
     
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5180'
-    
     if (video.video_path) {
-      return `${apiUrl}/api/videos/stream/${encodeURIComponent(video.video_path)}`
+      return `${API_URL}/api/videos/stream/${encodeURIComponent(video.video_path)}`
     }
     
     if (video.id) {
-      return `${apiUrl}/api/videos/stream/${video.id}`
+      return `${API_URL}/api/videos/stream/${video.id}`
     }
     
     return null
@@ -61,8 +60,7 @@ const VideoPlayer = ({
     }
     
     // Extract video path from URL to check transcoding status
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5180'
-    const streamPrefix = `${apiUrl}/api/videos/stream/`
+    const streamPrefix = `${API_URL}/api/videos/stream/`
     
     if (videoUrl.startsWith(streamPrefix)) {
       const urlPath = videoUrl.replace(streamPrefix, '')
@@ -71,7 +69,7 @@ const VideoPlayer = ({
       setTranscodingMessage('Checking video format...')
       
       // Check transcoding status
-      fetch(`${apiUrl}/api/videos/transcode-status/${urlPath}`)
+      fetch(`${API_URL}/api/videos/transcode-status/${urlPath}`)
         .then(res => res.json())
         .then(data => {
           if (data.needs_transcoding && !data.cache_exists) {

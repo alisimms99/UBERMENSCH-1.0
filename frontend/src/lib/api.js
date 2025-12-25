@@ -1,8 +1,9 @@
 // API service (single-user app: Ali)
+import { API_BASE_URL } from '../config/api.js'
 
 class ApiService {
   constructor() {
-    this.baseURL = 'http://localhost:5180/api'
+    this.baseURL = API_BASE_URL
     this.mockUser = null
     this.mockData = {
       exercises: [],
