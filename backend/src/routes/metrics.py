@@ -12,12 +12,12 @@ def get_daily_metrics(date_str):
     except ValueError:
         return jsonify({'error': 'Invalid date format. Use YYYY-MM-DD'}), 400
     
-    user_id = request.args.get('user_id', 1)
+    user_id = request.args.get('user_id', 1, type=int)
     
     metrics = DailyMetrics.query.filter_by(user_id=user_id, date=target_date).first()
     
     if not metrics:
-        return jsonify(None)
+        return jsonify({'error': 'Metrics not found for the specified date'}), 404
         
     return jsonify(metrics.to_dict())
 
@@ -33,7 +33,7 @@ def save_morning_checkin():
     except ValueError:
         return jsonify({'error': 'Invalid date format. Use YYYY-MM-DD'}), 400
     
-    user_id = data.get('user_id', 1)
+    user_id = int(data.get('user_id', 1))
     
     metrics = DailyMetrics.query.filter_by(user_id=user_id, date=target_date).first()
     
@@ -41,15 +41,15 @@ def save_morning_checkin():
         metrics = DailyMetrics(user_id=user_id, date=target_date)
         db.session.add(metrics)
     
-    # Update morning fields
+    # Update morning fields (only if provided)
     morning_data = data.get('morning', {})
-    metrics.morning_wake_time = morning_data.get('wake_time')
-    metrics.morning_sleep_quality = morning_data.get('sleep_quality')
-    metrics.morning_energy_level = morning_data.get('energy_level')
-    metrics.morning_mood = morning_data.get('mood')
-    metrics.morning_weight = morning_data.get('weight')
-    metrics.morning_symptoms = json.dumps(morning_data.get('symptoms', []))
-    metrics.morning_notes = morning_data.get('notes')
+    if 'wake_time' in morning_data: metrics.morning_wake_time = morning_data.get('wake_time')
+    if 'sleep_quality' in morning_data: metrics.morning_sleep_quality = morning_data.get('sleep_quality')
+    if 'energy_level' in morning_data: metrics.morning_energy_level = morning_data.get('energy_level')
+    if 'mood' in morning_data: metrics.morning_mood = morning_data.get('mood')
+    if 'weight' in morning_data: metrics.morning_weight = morning_data.get('weight')
+    if 'symptoms' in morning_data: metrics.morning_symptoms = json.dumps(morning_data.get('symptoms', []))
+    if 'notes' in morning_data: metrics.morning_notes = morning_data.get('notes')
     
     db.session.commit()
     return jsonify(metrics.to_dict())
@@ -66,7 +66,7 @@ def save_evening_checkin():
     except ValueError:
         return jsonify({'error': 'Invalid date format. Use YYYY-MM-DD'}), 400
     
-    user_id = data.get('user_id', 1)
+    user_id = int(data.get('user_id', 1))
     
     metrics = DailyMetrics.query.filter_by(user_id=user_id, date=target_date).first()
     
@@ -74,15 +74,15 @@ def save_evening_checkin():
         metrics = DailyMetrics(user_id=user_id, date=target_date)
         db.session.add(metrics)
     
-    # Update evening fields
+    # Update evening fields (only if provided)
     evening_data = data.get('evening', {})
-    metrics.evening_energy_level = evening_data.get('energy_level')
-    metrics.evening_mood = evening_data.get('mood')
-    metrics.evening_libido = evening_data.get('libido')
-    metrics.evening_stress_level = evening_data.get('stress_level')
-    metrics.evening_cramping = evening_data.get('cramping')
-    metrics.evening_symptoms = json.dumps(evening_data.get('symptoms', []))
-    metrics.evening_notes = evening_data.get('notes')
+    if 'energy_level' in evening_data: metrics.evening_energy_level = evening_data.get('energy_level')
+    if 'mood' in evening_data: metrics.evening_mood = evening_data.get('mood')
+    if 'libido' in evening_data: metrics.evening_libido = evening_data.get('libido')
+    if 'stress_level' in evening_data: metrics.evening_stress_level = evening_data.get('stress_level')
+    if 'cramping' in evening_data: metrics.evening_cramping = evening_data.get('cramping')
+    if 'symptoms' in evening_data: metrics.evening_symptoms = json.dumps(evening_data.get('symptoms', []))
+    if 'notes' in evening_data: metrics.evening_notes = evening_data.get('notes')
     
     db.session.commit()
     return jsonify(metrics.to_dict())
@@ -100,7 +100,7 @@ def update_day_metrics():
     except ValueError:
         return jsonify({'error': 'Invalid date format. Use YYYY-MM-DD'}), 400
     
-    user_id = data.get('user_id', 1)
+    user_id = int(data.get('user_id', 1))
     
     metrics = DailyMetrics.query.filter_by(user_id=user_id, date=target_date).first()
     

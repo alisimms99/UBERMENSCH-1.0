@@ -26,17 +26,17 @@ def create_enhanced_exercises():
             {'name': 'High Knees', 'category': 'warmup', 'is_timed': True, 'is_reps': False, 'default_duration_seconds': 60},
 
             # Strength
-            {'name': 'Pushups', 'category': 'strength', 'is_reps': True, 'default_reps': 10},
-            {'name': 'Situps', 'category': 'core', 'is_reps': True, 'default_reps': 15},
-            {'name': 'Squats', 'category': 'strength', 'is_reps': True, 'default_reps': 20},
-            {'name': 'Lunges', 'category': 'strength', 'is_reps': True, 'default_reps': 10},
+            {'name': 'Pushups', 'category': 'strength', 'is_timed': False, 'is_reps': True, 'default_reps': 10},
+            {'name': 'Situps', 'category': 'core', 'is_timed': False, 'is_reps': True, 'default_reps': 15},
+            {'name': 'Squats', 'category': 'strength', 'is_timed': False, 'is_reps': True, 'default_reps': 20},
+            {'name': 'Lunges', 'category': 'strength', 'is_timed': False, 'is_reps': True, 'default_reps': 10},
             {'name': 'Plank', 'category': 'core', 'is_timed': True, 'is_reps': False, 'default_duration_seconds': 45},
-            {'name': 'Glute Bridges', 'category': 'core', 'is_reps': True, 'default_reps': 15},
+            {'name': 'Glute Bridges', 'category': 'core', 'is_timed': False, 'is_reps': True, 'default_reps': 15},
             {'name': 'Mountain Climbers', 'category': 'cardio', 'is_timed': True, 'is_reps': False, 'default_duration_seconds': 45},
 
             # Cooldown / Yoga
             {'name': 'Childs Pose', 'category': 'cooldown', 'is_timed': True, 'is_reps': False, 'default_duration_seconds': 60},
-            {'name': 'Cat-Cow', 'category': 'cooldown', 'is_reps': True, 'default_reps': 10},
+            {'name': 'Cat-Cow', 'category': 'cooldown', 'is_timed': False, 'is_reps': True, 'default_reps': 10},
             
             # Cardio
             {'name': 'Walking', 'category': 'cardio', 'is_distance': True, 'is_timed': True, 'is_reps': False, 'default_duration_seconds': 1200}
@@ -53,11 +53,12 @@ def create_enhanced_exercises():
             created_exercises[ex['name']] = new_ex
         
         db.session.commit()
-        return created_exercises
+        # Return dict with success indicator for consistent return type
+        return {'success': True, 'exercises': created_exercises, 'count': len(created_exercises)}
     except Exception as e:
         print(f"Error creating exercises: {str(e)}")
         db.session.rollback()
-        return False
+        return {'success': False, 'error': str(e), 'exercises': {}, 'count': 0}
 
 def create_enhanced_workout_templates():
     """Seed the database with workout templates and associations.
@@ -71,8 +72,15 @@ def create_enhanced_workout_templates():
         if not exercises:
             # If exercises don't exist, create them (fallback for backward compatibility)
             print("Warning: No exercises found. Creating exercises as fallback...")
-            create_enhanced_exercises()
+            exercises_result = create_enhanced_exercises()
+            if not exercises_result.get('success', False):
+                error_msg = exercises_result.get('error', 'Unknown error')
+                print(f"ERROR: Failed to create exercises in fallback: {error_msg}. Cannot create templates without exercises.")
+                return False
             exercises = {e.name: e for e in Exercise.query.all()}
+            if not exercises:
+                print("ERROR: Exercises still not found after creation attempt. Cannot create templates.")
+                return False
 
         # Clear existing templates (always run template creation)
         db.session.query(WorkoutTemplate).delete()
@@ -105,13 +113,18 @@ def create_enhanced_workout_templates():
                 print(f"Warning: Exercise '{name}' not found, skipping association")
                 continue
             
+            # For timed exercises, sets don't apply semantically - set to None or 1
+            # For rep-based exercises, use the sets value
+            is_timed = ex.is_timed if hasattr(ex, 'is_timed') else False
+            final_sets = None if is_timed else sets
+            
             assoc = WorkoutTemplateExercise(
                 template_id=t1.id,
                 exercise_id=ex.id,
                 phase=phase,
                 sort_order=order,
                 target_reps=reps if reps > 0 else None,
-                target_sets=sets,
+                target_sets=final_sets,
                 target_duration_seconds=dur if dur > 0 else None
             )
             db.session.add(assoc)
@@ -140,13 +153,18 @@ def create_enhanced_workout_templates():
         for name, phase, order, reps, sets, dur in t2_items:
             ex = exercises.get(name)
             if ex:
+                # For timed exercises, sets don't apply semantically - set to None
+                # For rep-based exercises, use the sets value
+                is_timed = ex.is_timed if hasattr(ex, 'is_timed') else False
+                final_sets = None if is_timed else sets
+                
                 assoc = WorkoutTemplateExercise(
                     template_id=t2.id,
                     exercise_id=ex.id,
                     phase=phase,
                     sort_order=order,
                     target_reps=reps if reps > 0 else None,
-                    target_sets=sets,
+                    target_sets=final_sets,
                     target_duration_seconds=dur if dur > 0 else None
                 )
                 db.session.add(assoc)
@@ -175,13 +193,18 @@ def create_enhanced_workout_templates():
         for name, phase, order, reps, sets, dur in t3_items:
             ex = exercises.get(name)
             if ex:
+                # For timed exercises, sets don't apply semantically - set to None
+                # For rep-based exercises, use the sets value
+                is_timed = ex.is_timed if hasattr(ex, 'is_timed') else False
+                final_sets = None if is_timed else sets
+                
                 assoc = WorkoutTemplateExercise(
                     template_id=t3.id,
                     exercise_id=ex.id,
                     phase=phase,
                     sort_order=order,
                     target_reps=reps if reps > 0 else None,
-                    target_sets=sets,
+                    target_sets=final_sets,
                     target_duration_seconds=dur if dur > 0 else None
                 )
                 db.session.add(assoc)
@@ -206,13 +229,18 @@ def create_enhanced_workout_templates():
         for name, phase, order, reps, sets, dur in t4_items:
             ex = exercises.get(name)
             if ex:
+                # For timed exercises, sets don't apply semantically - set to None
+                # For rep-based exercises, use the sets value
+                is_timed = ex.is_timed if hasattr(ex, 'is_timed') else False
+                final_sets = None if is_timed else sets
+                
                 assoc = WorkoutTemplateExercise(
                     template_id=t4.id,
                     exercise_id=ex.id,
                     phase=phase,
                     sort_order=order,
                     target_reps=reps if reps > 0 else None,
-                    target_sets=sets,
+                    target_sets=final_sets,
                     target_duration_seconds=dur if dur > 0 else None
                 )
                 db.session.add(assoc)

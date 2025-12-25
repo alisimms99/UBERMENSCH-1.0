@@ -17,12 +17,18 @@ def get_entry():
         return jsonify({'error': 'Invalid date format. Use YYYY-MM-DD'}), 400
     
     entry_type = request.args.get('type') # morning / evening
-    user_id = request.args.get('user_id', 1)
+    if not entry_type:
+        return jsonify({'error': 'Type parameter is required. Must be "morning" or "evening"'}), 400
+    
+    if entry_type not in ['morning', 'evening']:
+        return jsonify({'error': f'Invalid type "{entry_type}". Must be "morning" or "evening"'}), 400
+    
+    user_id = request.args.get('user_id', 1, type=int)
     
     entry = DiaryEntry.query.filter_by(user_id=user_id, date=target_date, type=entry_type).first()
     
     if not entry:
-        return jsonify(None)
+        return jsonify({'error': 'Diary entry not found for the specified date and type'}), 404
         
     return jsonify(entry.to_dict())
 
@@ -38,8 +44,14 @@ def save_entry():
     except ValueError:
         return jsonify({'error': 'Invalid date format. Use YYYY-MM-DD'}), 400
     
-    user_id = data.get('user_id', 1)
+    user_id = int(data.get('user_id', 1))
     entry_type = data.get('type')
+    
+    if not entry_type:
+        return jsonify({'error': 'Type parameter is required. Must be "morning" or "evening"'}), 400
+    
+    if entry_type not in ['morning', 'evening']:
+        return jsonify({'error': f'Invalid type "{entry_type}". Must be "morning" or "evening"'}), 400
     
     entry = DiaryEntry.query.filter_by(user_id=user_id, date=target_date, type=entry_type).first()
     

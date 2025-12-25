@@ -51,9 +51,11 @@ def init_database():
         # Seed Exercises first, then Templates
         print("Seeding exercises...")
         exercises_result = create_enhanced_exercises()
-        if not exercises_result:
-            print("ERROR: Failed to create exercises. Cannot proceed with template seeding.")
+        if not exercises_result.get('success', False):
+            error_msg = exercises_result.get('error', 'Unknown error')
+            print(f"ERROR: Failed to create exercises: {error_msg}. Cannot proceed with template seeding.")
             return
+        print(f"Successfully created {exercises_result.get('count', 0)} exercises.")
         
         print("Seeding workout templates...")
         templates_result = create_enhanced_workout_templates()

@@ -1,4 +1,5 @@
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import UniqueConstraint
 from datetime import datetime
 import json
 
@@ -77,7 +78,7 @@ class Exercise(db.Model):
     
     # Relationships
     video_mappings = db.relationship('WorkoutVideoMapping', backref='exercise', lazy=True)
-    template_associations = db.relationship('WorkoutTemplateExercise', backref='exercise', lazy=True)
+    template_associations = db.relationship('WorkoutTemplateExercise', backref='exercise', lazy=True, cascade="all, delete-orphan")
 
     def to_dict(self):
         return {
@@ -88,6 +89,7 @@ class Exercise(db.Model):
             'instructions': self.instructions,
             'is_timed': self.is_timed,
             'is_reps': self.is_reps,
+            'is_distance': self.is_distance,
             'default_reps': self.default_reps,
             'default_duration_seconds': self.default_duration_seconds,
             'default_rest_seconds': self.default_rest_seconds
@@ -102,17 +104,20 @@ class WorkoutTemplateExercise(db.Model):
     phase = db.Column(db.String(50)) # warmup, main, cooldown
     sort_order = db.Column(db.Integer, default=0)
     
-    # Overrides
-    target_reps = db.Column(db.Integer)
-    target_sets = db.Column(db.Integer, default=1)
-    target_duration_seconds = db.Column(db.Integer)
-    rest_seconds = db.Column(db.Integer)
+    # Overrides (nullable - optional template-specific overrides)
+    target_reps = db.Column(db.Integer, nullable=True)
+    target_sets = db.Column(db.Integer, nullable=True)  # None for timed exercises, explicit value for rep-based
+    target_duration_seconds = db.Column(db.Integer, nullable=True)
+    rest_seconds = db.Column(db.Integer, nullable=True)
     
     def to_dict(self):
         # Merge exercise details with template overrides
         # Safety check: ensure exercise relationship exists before accessing
         if not self.exercise:
-            # Fallback if exercise is deleted or relationship is broken
+            # Exercise relationship is broken or exercise was deleted
+            # Use template values directly (no defaults available)
+            # When exercise is missing, we can't determine if it's timed, so return stored value
+            # but note that this is a degraded state
             return {
                 'id': self.id,
                 'exercise_id': self.exercise_id,
@@ -120,24 +125,34 @@ class WorkoutTemplateExercise(db.Model):
                 'phase': self.phase,
                 'sort_order': self.sort_order,
                 'target_reps': self.target_reps,
-                'target_sets': self.target_sets,
+                'target_sets': self.target_sets,  # May be invalid if exercise was timed, but we don't know
                 'target_duration_seconds': self.target_duration_seconds,
                 'rest_seconds': self.rest_seconds,
-                'error': 'Exercise not found'
+                'error': 'Exercise not found'  # Always present: None when no error, string when error exists
             }
         
+        # Normal case: exercise exists, use defaults as fallback
         base_exercise = self.exercise.to_dict()
+        # Use explicit None check to preserve valid zero values
+        target_reps = self.target_reps if self.target_reps is not None else base_exercise.get('default_reps')
+        target_duration_seconds = self.target_duration_seconds if self.target_duration_seconds is not None else base_exercise.get('default_duration_seconds')
+        rest_seconds = self.rest_seconds if self.rest_seconds is not None else base_exercise.get('default_rest_seconds')
+        
+        # For timed exercises, target_sets is semantically invalid - return None instead of stored value
+        is_timed = base_exercise.get('is_timed', False)
+        target_sets = None if is_timed else self.target_sets
+        
         return {
             'id': self.id,
             'exercise_id': self.exercise_id,
             'exercise': base_exercise,
             'phase': self.phase,
             'sort_order': self.sort_order,
-            # Use explicit None check to preserve valid zero values
-            'target_reps': self.target_reps if self.target_reps is not None else base_exercise['default_reps'],
-            'target_sets': self.target_sets,
-            'target_duration_seconds': self.target_duration_seconds if self.target_duration_seconds is not None else base_exercise['default_duration_seconds'],
-            'rest_seconds': self.rest_seconds if self.rest_seconds is not None else base_exercise['default_rest_seconds']
+            'target_reps': target_reps,
+            'target_sets': target_sets,
+            'target_duration_seconds': target_duration_seconds,
+            'rest_seconds': rest_seconds,
+            'error': None  # Always present: None when no error, string when error exists
         }
 
 class VideoCategory(db.Model):
@@ -320,6 +335,9 @@ class SupplementLog(db.Model):
 
 class DailyMetrics(db.Model):
     __tablename__ = 'daily_metrics'
+    __table_args__ = (
+        UniqueConstraint('user_id', 'date', name='uq_daily_metrics_user_date'),
+    )
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
     date = db.Column(db.Date, nullable=False)
@@ -382,6 +400,9 @@ class DailyMetrics(db.Model):
 
 class DiaryEntry(db.Model):
     __tablename__ = 'diary_entries'
+    __table_args__ = (
+        UniqueConstraint('user_id', 'date', 'type', name='uq_diary_entry_user_date_type'),
+    )
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
     date = db.Column(db.Date, nullable=False)
