@@ -298,6 +298,53 @@ def stream_video_by_path(filename):
             'job_id': job.id,
             'poll_url': f'/api/videos/transcode-job/{job.id}'
         }), 202
+        # Check if cache is being created (temp file exists)
+        tmp_path = cache_path + '.tmp'
+        if os.path.exists(tmp_path):
+            # Verify that the temp file is not stale before assuming transcoding is in progress
+            try:
+                mtime = datetime.fromtimestamp(os.path.getmtime(tmp_path))
+                age = datetime.now() - mtime
+                # If the temp file is older than 1 hour, assume a previous transcoding attempt failed
+                if age.total_seconds() > 3600:
+                    logger.warning(
+                        f"Stale transcoding temp file detected (age={age.total_seconds()}s) for: {file_path}. "
+                        "Removing temp file and restarting transcoding."
+                    )
+                    try:
+                        os.remove(tmp_path)
+                    except OSError as remove_err:
+                        logger.error(f"Failed to remove stale temp file {tmp_path}: {remove_err}")
+                else:
+                    # Transcoding in progress - return 202 Accepted with retry-after
+                    return jsonify({
+                        'error': 'Video is being prepared for playback',
+                        'status': 'transcoding',
+                        'message': 'Please wait and try again in a moment'
+                    }), 202
+            except Exception as tmp_check_err:
+                # If we cannot reliably determine staleness, fall back to existing behavior
+                logger.warning(
+                    f"Error while checking transcoding temp file {tmp_path}: {tmp_check_err}. "
+                    "Assuming transcoding is in progress."
+                )
+                return jsonify({
+                    'error': 'Video is being prepared for playback',
+                    'status': 'transcoding',
+                    'message': 'Please wait and try again in a moment'
+                }), 202
+        
+        # Start transcoding (this will block - consider async for large files)
+        logger.info(f"Starting transcoding for: {file_path}")
+        if transcode_to_h264(file_path, cache_path):
+            logger.info(f"Transcoding complete, serving: {cache_path}")
+            return send_file_partial(cache_path)
+        else:
+            logger.error(f"Transcoding failed for: {file_path}")
+            return jsonify({
+                'error': 'Video transcoding failed',
+                'message': 'Unable to prepare video for playback'
+            }), 500
     
     except Exception as e:
         logger.error(f"Error streaming video: {str(e)}")
