@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { apiService } from '../lib/api';
 
@@ -8,11 +8,7 @@ export default function LibraryCategory() {
   const [videos, setVideos] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadVideos();
-  }, [categoryName]);
-
-  const loadVideos = async () => {
+  const loadVideos = useCallback(async () => {
     try {
       const res = await apiService.request(`/library/category/${encodeURIComponent(categoryName)}`, { method: 'GET' });
       setVideos(res.videos || []);
@@ -21,7 +17,11 @@ export default function LibraryCategory() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [categoryName]);
+
+  useEffect(() => {
+    loadVideos();
+  }, [loadVideos]);
 
   const formatDuration = (seconds) => {
     if (!seconds) return '';

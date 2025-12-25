@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import VideoPlayer from '../components/VideoPlayer';
 import { apiService } from '../lib/api';
@@ -17,16 +17,14 @@ export default function LibraryPlayer() {
   const [isPlaying, setIsPlaying] = useState(false);
   const timerRef = useRef(null);
 
-  useEffect(() => {
-    if (isWorkout) {
-      startSession();
-    }
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
+  const startTimer = useCallback(() => {
+    setIsPlaying(true);
+    timerRef.current = setInterval(() => {
+      setElapsedTime(prev => prev + 1);
+    }, 1000);
   }, []);
 
-  const startSession = async () => {
+  const startSession = useCallback(async () => {
     try {
       const res = await apiService.request('/library/sessions', {
         method: 'POST',
@@ -42,14 +40,16 @@ export default function LibraryPlayer() {
     } catch (error) {
       console.error('Failed to start session:', error);
     }
-  };
+  }, [videoPath, videoName, category, startTimer]);
 
-  const startTimer = () => {
-    setIsPlaying(true);
-    timerRef.current = setInterval(() => {
-      setElapsedTime(prev => prev + 1);
-    }, 1000);
-  };
+  useEffect(() => {
+    if (isWorkout) {
+      startSession();
+    }
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [isWorkout, startSession]);
 
   const pauseTimer = () => {
     setIsPlaying(false);
