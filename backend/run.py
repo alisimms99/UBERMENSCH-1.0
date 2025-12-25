@@ -10,7 +10,7 @@ from src.models import db  # This import will now work
 from src.data.seed_video_library import seed_video_library
 from src.data.enhanced_seed_templates import create_enhanced_exercises, create_enhanced_workout_templates
 
-os.environ['VIDEO_ROOT_PATH'] = "/Users/dlaimins/Shared/Parnes/Exercise Videos"
+os.environ['VIDEO_ROOT_PATH'] = "/Volumes/share/Shared Videos/Exercise Videos"
 
 app = create_app()
 

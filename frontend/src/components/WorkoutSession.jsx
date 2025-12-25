@@ -25,6 +25,7 @@ export default function WorkoutSession({ user }) {
   const [currentVideo, setCurrentVideo] = useState(null)
   const [exerciseVideos, setExerciseVideos] = useState({}) // Cache videos by exercise_id
   const [showEndWorkoutConfirm, setShowEndWorkoutConfirm] = useState(false)
+  const [selectedVideoIndex, setSelectedVideoIndex] = useState({}) // Track selected video per exercise: { exerciseId: index }
 
   useEffect(() => {
     loadTemplate()
@@ -71,13 +72,88 @@ export default function WorkoutSession({ user }) {
     }
   }, [isActive, timer, timerRunning, prepCountdown])
 
+  // Get video URL for current exercise (supports video_paths array or single video_path)
+  const getVideoUrl = (exercise, videoIndex = null) => {
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5180'
+    
+    // Check if exercise has multiple video options
+    if (exercise?.video_paths && Array.isArray(exercise.video_paths) && exercise.video_paths.length > 0) {
+      // Use selected index, or default index, or first video
+      const index = videoIndex !== null 
+        ? videoIndex 
+        : exercise.video_paths.findIndex(v => v.is_default) >= 0
+          ? exercise.video_paths.findIndex(v => v.is_default)
+          : 0
+      
+      const selectedVideo = exercise.video_paths[index]
+      if (selectedVideo?.path) {
+        const url = `${apiUrl}/api/videos/stream/${encodeURIComponent(selectedVideo.path)}`
+        console.log(`Video URL (${selectedVideo.name}):`, url)
+        return url
+      }
+    }
+    
+    // Fallback to single video_path
+    if (exercise?.video_path) {
+      const url = `${apiUrl}/api/videos/stream/${encodeURIComponent(exercise.video_path)}`
+      console.log('Video URL (single):', url)
+      return url
+    }
+    
+    console.log('No video_path for exercise:', exercise?.name)
+    return null
+  }
+  
+  // Get current selected video index for exercise
+  const getSelectedVideoIndex = (exercise) => {
+    if (!exercise?.video_paths || !Array.isArray(exercise.video_paths)) return 0
+    const exerciseId = exercise.id
+    const storedIndex = selectedVideoIndex[exerciseId]
+    if (storedIndex !== undefined) return storedIndex
+    // Find default or use first
+    const defaultIndex = exercise.video_paths.findIndex(v => v.is_default)
+    return defaultIndex >= 0 ? defaultIndex : 0
+  }
+  
+  // Handle video selection change
+  const handleVideoSelect = (exercise, index) => {
+    const exerciseId = exercise.id
+    setSelectedVideoIndex(prev => ({ ...prev, [exerciseId]: index }))
+    // Update currentVideo immediately
+    const videoUrl = getVideoUrl(exercise, index)
+    if (videoUrl) {
+      setCurrentVideo({
+        id: exercise.id,
+        title: exercise.video_paths[index]?.name || exercise.name,
+        streaming_url: videoUrl
+      })
+    }
+  }
+
   // Load video for current exercise
   useEffect(() => {
     if (template && currentIndex < template.exercises.length) {
-      const exercise = template.exercises[currentIndex]
-      loadExerciseVideo(exercise.exercise?.id)
+      const exercise = template.exercises[currentIndex]?.exercise
+      const videoIndex = getSelectedVideoIndex(exercise)
+      
+      if (exercise?.video_path || (exercise?.video_paths && exercise.video_paths.length > 0)) {
+        // Create a video object for VideoPlayer component
+        const videoUrl = getVideoUrl(exercise, videoIndex)
+        const videoName = exercise?.video_paths?.[videoIndex]?.name || exercise?.name
+        
+        if (videoUrl) {
+          setCurrentVideo({
+            id: exercise.id,
+            title: videoName,
+            streaming_url: videoUrl,
+          })
+        }
+      } else {
+        // Try loading from database mapping as fallback
+        loadExerciseVideo(exercise?.id)
+      }
     }
-  }, [template, currentIndex])
+  }, [template, currentIndex, selectedVideoIndex])
 
   const loadTemplate = async () => {
     setLoading(true)
@@ -355,21 +431,84 @@ export default function WorkoutSession({ user }) {
       <div className="flex-grow grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Left: Video / Instruction */}
         <Card className="flex flex-col overflow-hidden">
+          {/* Video Selector (if multiple videos available) */}
+          {(() => {
+            const exercise = currentItem.exercise
+            const hasMultipleVideos = exercise?.video_paths && Array.isArray(exercise.video_paths) && exercise.video_paths.length > 1
+            
+            if (hasMultipleVideos) {
+              const currentIndex = getSelectedVideoIndex(exercise)
+              return (
+                <div className="p-4 bg-muted border-b">
+                  <label className="text-sm font-medium mb-2 block">Video Option:</label>
+                  <select
+                    value={currentIndex}
+                    onChange={(e) => handleVideoSelect(exercise, parseInt(e.target.value))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md bg-background text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    {exercise.video_paths.map((video, idx) => (
+                      <option key={idx} value={idx}>
+                        {video.name} {video.codec ? `(${video.codec.toUpperCase()})` : ''} {video.size ? `- ${video.size}` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )
+            }
+            return null
+          })()}
+          
           {/* Video Player */}
-          {currentVideo ? (
-            <VideoPlayer
-              video={currentVideo}
-              autoPlay={false}
-              showControls={true}
-              exerciseContext={currentItem.exercise}
-              className="w-full"
-            />
-          ) : (
-            <div className="aspect-video bg-black flex flex-col items-center justify-center text-white">
-              <Play className="w-12 h-12 opacity-50 mb-2" />
-              <p className="text-sm opacity-75">No video available</p>
-            </div>
-          )}
+          {(() => {
+            const exercise = currentItem.exercise
+            const hasVideoPath = exercise?.video_path || (exercise?.video_paths && exercise.video_paths.length > 0)
+            const currentVideoIndex = getSelectedVideoIndex(exercise)
+            
+            console.log('Rendering video player:', {
+              exerciseName: exercise?.name,
+              hasVideoPath,
+              videoPath: exercise?.video_path,
+              videoPaths: exercise?.video_paths?.length || 0,
+              selectedIndex: currentVideoIndex,
+              currentVideo: currentVideo
+            })
+            
+            if (hasVideoPath) {
+              const videoUrl = getVideoUrl(exercise, currentVideoIndex)
+              const videoName = exercise?.video_paths?.[currentVideoIndex]?.name || exercise?.name
+              
+              return (
+                <VideoPlayer
+                  video={{
+                    id: exercise.id,
+                    title: videoName,
+                    streaming_url: videoUrl
+                  }}
+                  autoPlay={false}
+                  showControls={true}
+                  exerciseContext={exercise}
+                  className="w-full"
+                />
+              )
+            } else if (currentVideo) {
+              return (
+                <VideoPlayer
+                  video={currentVideo}
+                  autoPlay={false}
+                  showControls={true}
+                  exerciseContext={currentItem.exercise}
+                  className="w-full"
+                />
+              )
+            } else {
+              return (
+                <div className="aspect-video bg-black flex flex-col items-center justify-center text-white">
+                  <Play className="w-12 h-12 opacity-50 mb-2" />
+                  <p className="text-sm opacity-75">No video available</p>
+                </div>
+              )
+            }
+          })()}
           <CardContent className="p-6 flex-grow">
             <h1 className="text-3xl font-bold mb-2">{currentItem.exercise?.name || 'Exercise'}</h1>
             {currentItem.exercise?.instructions && (

@@ -76,6 +76,10 @@ class Exercise(db.Model):
     default_duration_seconds = db.Column(db.Integer)
     default_rest_seconds = db.Column(db.Integer, default=60)
     
+    # Video paths - relative path within VIDEO_ROOT_PATH
+    video_path = db.Column(db.String(500), nullable=True)  # Single primary video path
+    video_paths = db.Column(db.JSON, nullable=True)  # Array of paths for exercises with multiple videos
+    
     # Relationships
     video_mappings = db.relationship('WorkoutVideoMapping', backref='exercise', lazy=True)
     template_associations = db.relationship('WorkoutTemplateExercise', backref='exercise', lazy=True, cascade="all, delete-orphan")
@@ -92,7 +96,9 @@ class Exercise(db.Model):
             'is_distance': self.is_distance,
             'default_reps': self.default_reps,
             'default_duration_seconds': self.default_duration_seconds,
-            'default_rest_seconds': self.default_rest_seconds
+            'default_rest_seconds': self.default_rest_seconds,
+            'video_path': self.video_path,
+            'video_paths': self.video_paths if self.video_paths else []
         }
 
 class WorkoutTemplateExercise(db.Model):
