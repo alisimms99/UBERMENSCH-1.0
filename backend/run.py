@@ -9,8 +9,17 @@ from src.main import create_app
 from src.models import db  # This import will now work
 from src.data.seed_video_library import seed_video_library
 from src.data.enhanced_seed_templates import create_enhanced_exercises, create_enhanced_workout_templates
+from dotenv import load_dotenv
 
-os.environ['VIDEO_ROOT_PATH'] = "/Volumes/share/Shared Videos/Exercise Videos"
+# Load environment variables from .env file if it exists
+# This allows developers to configure paths locally without hardcoding
+load_dotenv()
+
+# VIDEO_ROOT_PATH should be set via .env file or system environment variable
+# If not set, the app will handle the error appropriately
+if not os.environ.get('VIDEO_ROOT_PATH'):
+    print("⚠️  WARNING: VIDEO_ROOT_PATH not set. Please set it in .env file or environment variables.")
+    print("   Example: VIDEO_ROOT_PATH=/path/to/your/videos")
 
 app = create_app()
 

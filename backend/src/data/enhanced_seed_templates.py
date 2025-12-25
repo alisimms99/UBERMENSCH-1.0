@@ -69,15 +69,16 @@ def create_enhanced_exercises():
         for ex in exercises_data:
             new_ex = Exercise(**ex)
             db.session.add(new_ex)
-            # Flush to get ID if needed, but we'll query back or use object reference
+            # Flush to make objects available for queries within the same transaction
+            db.session.flush()
             created_exercises[ex['name']] = new_ex
         
-        db.session.commit()
+        # Don't commit here - let the caller handle commits for transaction atomicity
         # Return dict with success indicator for consistent return type
         return {'success': True, 'exercises': created_exercises, 'count': len(created_exercises)}
     except Exception as e:
         print(f"Error creating exercises: {str(e)}")
-        db.session.rollback()
+        # Don't rollback here - let the caller handle rollbacks for transaction atomicity
         return {'success': False, 'error': str(e), 'exercises': {}, 'count': 0}
 
 def create_enhanced_workout_templates():
@@ -265,11 +266,11 @@ def create_enhanced_workout_templates():
                 )
                 db.session.add(assoc)
         
-        db.session.commit()
+        # Don't commit here - let the caller handle commits for transaction atomicity
         return True
     except Exception as e:
         print(f"Error creating workout templates: {str(e)}")
         import traceback
         traceback.print_exc()
-        db.session.rollback()
+        # Don't rollback here - let the caller handle rollbacks for transaction atomicity
         return False

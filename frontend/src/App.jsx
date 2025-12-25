@@ -11,6 +11,9 @@ import WorkoutTemplates from './components/WorkoutTemplates'
 import Progress from './components/Progress'
 import Profile from './components/Profile'
 import Navigation from './components/Navigation'
+import Library from './pages/Library'
+import LibraryCategory from './pages/LibraryCategory'
+import LibraryPlayer from './pages/LibraryPlayer'
 
 // API service
 import { apiService } from './lib/api'
@@ -153,6 +156,26 @@ function App() {
                   <Profile user={user} setUser={setUser} />
                 </MainLayout>
               }
+            />
+            <Route
+              path="/library"
+              element={
+                <MainLayout user={user} darkMode={darkMode} toggleDarkMode={toggleDarkMode}>
+                  <Library />
+                </MainLayout>
+              }
+            />
+            <Route
+              path="/library/category/:categoryName"
+              element={
+                <MainLayout user={user} darkMode={darkMode} toggleDarkMode={toggleDarkMode}>
+                  <LibraryCategory />
+                </MainLayout>
+              }
+            />
+            <Route
+              path="/library/play"
+              element={<LibraryPlayer />}
             />
           </Routes>
         </AnimatePresence>

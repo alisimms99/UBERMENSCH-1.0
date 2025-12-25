@@ -480,3 +480,55 @@ class TranscodeJob(db.Model):
             'started_at': self.started_at.isoformat() if self.started_at else None,
             'completed_at': self.completed_at.isoformat() if self.completed_at else None
         }
+
+class VideoSession(db.Model):
+    """Track video workout sessions for metrics"""
+    __tablename__ = 'video_sessions'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    video_path = db.Column(db.String(500), nullable=False)
+    video_name = db.Column(db.String(200))
+    category = db.Column(db.String(100))
+    started_at = db.Column(db.DateTime, default=datetime.utcnow)
+    ended_at = db.Column(db.DateTime, nullable=True)
+    duration_seconds = db.Column(db.Integer, default=0)
+    completed = db.Column(db.Boolean, default=False)
+    notes = db.Column(db.Text, nullable=True)
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'video_path': self.video_path,
+            'video_name': self.video_name,
+            'category': self.category,
+            'started_at': self.started_at.isoformat() if self.started_at else None,
+            'ended_at': self.ended_at.isoformat() if self.ended_at else None,
+            'duration_seconds': self.duration_seconds,
+            'completed': self.completed,
+            'notes': self.notes
+        }
+
+class VideoFavorite(db.Model):
+    """User's favorite videos for quick access"""
+    __tablename__ = 'video_favorites'
+    __table_args__ = (
+        UniqueConstraint('user_id', 'video_path', name='uq_video_favorite_user_path'),
+    )
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    video_path = db.Column(db.String(500), nullable=False)
+    video_name = db.Column(db.String(200))
+    category = db.Column(db.String(100))
+    added_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'video_path': self.video_path,
+            'video_name': self.video_name,
+            'category': self.category,
+            'added_at': self.added_at.isoformat() if self.added_at else None
+        }

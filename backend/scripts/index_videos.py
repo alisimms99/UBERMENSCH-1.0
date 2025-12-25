@@ -28,8 +28,8 @@ def parse_video_library(video_library_path):
             if not line or line.startswith('#'):
                 continue
             
-            # Remove leading ./ if present
-            path = line.lstrip('./')
+            # Remove leading ./ if present (using removeprefix for Python 3.9+)
+            path = line.removeprefix('./')
             
             # Skip if empty after stripping
             if not path:

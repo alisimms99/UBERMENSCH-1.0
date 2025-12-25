@@ -5,7 +5,8 @@ from .models import (
     ProgressEntry, Achievement, UserAchievement,
     WorkoutSession, ExerciseCompletion,
     VideoPlaylist, VideoPlaylistItem,
-    Supplement, SupplementLog, DailyMetrics, DiaryEntry, TranscodeJob
+    Supplement, SupplementLog, DailyMetrics, DiaryEntry, TranscodeJob,
+    VideoSession, VideoFavorite
 )
 
 __all__ = [
@@ -14,5 +15,6 @@ __all__ = [
     'ProgressEntry', 'Achievement', 'UserAchievement',
     'WorkoutSession', 'ExerciseCompletion',
     'VideoPlaylist', 'VideoPlaylistItem',
-    'Supplement', 'SupplementLog', 'DailyMetrics', 'DiaryEntry', 'TranscodeJob'
+    'Supplement', 'SupplementLog', 'DailyMetrics', 'DiaryEntry', 'TranscodeJob',
+    'VideoSession', 'VideoFavorite'
 ]

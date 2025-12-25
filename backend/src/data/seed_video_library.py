@@ -378,23 +378,21 @@ def create_exercise_video_mappings():
     return created_mappings
 
 def seed_video_library():
-    """Seed the video library database"""
+    """Seed the video library database with comprehensive category structure"""
     try:
-        required_categories = [
-            {'name': 'qigong', 'display_name': 'Qigong'},
-            {'name': 'boxing', 'display_name': 'Boxing'}
-        ]
-        
+        # Delete all existing categories and recreate them in a single transaction
+        # This ensures atomicity - if adding fails, the deletion is also rolled back
         db.session.query(VideoCategory).delete()
-        for cat_data in required_categories:
-            if not VideoCategory.query.filter_by(name=cat_data['name']).first():
-                db.session.add(VideoCategory(**cat_data))
         
-        db.session.commit()
+        # Create comprehensive video category hierarchy (20+ categories with subcategories)
+        created_categories = create_video_categories()
+        
+        # Don't commit here - let the caller handle commits for transaction atomicity
+        print(f"✓ Created {len(created_categories)} video categories")
         return True
     except Exception as e:
         print(f"Error seeding video library: {str(e)}")
-        db.session.rollback()
+        # Don't rollback here - let the caller handle rollbacks for transaction atomicity
         return False
 
 if __name__ == "__main__":
