@@ -47,4 +47,8 @@ def create_app():
     with app.app_context():
         db.create_all()  # Create tables if they don't exist
     
+    # Start background transcode worker
+    from .utils.transcode_manager import start_worker
+    start_worker(app)
+    
     return app
