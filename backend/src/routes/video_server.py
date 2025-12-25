@@ -21,7 +21,9 @@ from ..utils.video_transcoder import (
     get_cache_path,
     get_playable_path,
     transcode_to_h264,
-    get_video_codec
+    get_video_codec,
+    cleanup_cache,
+    get_cache_stats
 )
 
 logger = logging.getLogger(__name__)
@@ -713,4 +715,33 @@ def get_or_create_category_from_path(folder_parts):
         parent_id = category.id
     
     return category
+
+@video_bp.route('/cache/stats', methods=['GET'])
+def cache_stats():
+    """Get transcode cache statistics."""
+    try:
+        stats = get_cache_stats()
+        return jsonify(stats)
+    except Exception as e:
+        logger.error(f"Error getting cache stats: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@video_bp.route('/cache/cleanup', methods=['POST'])
+def cache_cleanup():
+    """
+    Trigger cache cleanup.
+    
+    Optional query param:
+    - force: If 'true', force cleanup regardless of current cache size
+    """
+    try:
+        force = request.args.get('force', 'false').lower() == 'true'
+        stats = cleanup_cache(force=force)
+        return jsonify({
+            'message': 'Cache cleanup completed',
+            'stats': stats
+        })
+    except Exception as e:
+        logger.error(f"Error during cache cleanup: {str(e)}")
+        return jsonify({'error': str(e)}), 500
 
