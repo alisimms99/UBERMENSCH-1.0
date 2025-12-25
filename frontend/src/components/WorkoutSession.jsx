@@ -196,7 +196,7 @@ export default function WorkoutSession({ user }) {
     }
 
     try {
-      const response = await fetch(`http://localhost:5180/api/videos/exercise/${exerciseId}/videos`)
+      const response = await fetch(`${API_URL}/api/videos/exercise/${exerciseId}/videos`)
       if (response.ok) {
         const data = await response.json()
         // Get primary video or first video
