@@ -160,7 +160,7 @@ const WorkoutTemplates = ({ user, onStartWorkout, onBack }) => {
   const handleStartWorkout = (template) => {
     if (typeof onStartWorkout === 'function') return onStartWorkout(template)
     const templateId = typeof template === 'object' ? template?.id : template
-    if (templateId) navigate(`/workout/template/${templateId}`)
+    if (templateId) navigate(`/workout/session/${templateId}`)
   }
 
   if (loading) {

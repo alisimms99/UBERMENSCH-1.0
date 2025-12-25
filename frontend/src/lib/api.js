@@ -307,6 +307,10 @@ class ApiService {
   async getWorkoutTemplates() {
     return this.request('/templates', { method: 'GET' })
   }
+  
+  async getWorkoutTemplate(templateId) {
+    return this.request(`/templates/${templateId}`, { method: 'GET' })
+  }
   async getUserProgress(userId, params = {}) { return [] }
   async updateStreaks(userId, streakData) { return streakData }
   async getAchievements() { return [] }
