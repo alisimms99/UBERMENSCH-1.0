@@ -35,8 +35,11 @@ ALLOWED_NETWORKS = ['192.168.0.0/16', '10.0.0.0/8', '172.16.0.0/12', '127.0.0.1/
 SUPPORTED_FORMATS = ['.mp4', '.avi', '.mov', '.mkv', '.wmv', '.flv', '.webm']
 
 # Input validation constants
-MAX_PATH_LENGTH = 4096  # Typical filesystem limit
-ASCII_CONTROL_THRESHOLD = 32  # ASCII control characters are 0-31
+# Most filesystems support up to 4096 bytes for paths (e.g., Linux PATH_MAX, ext4)
+MAX_PATH_LENGTH = 4096
+# ASCII control characters (0-31) can be used in path injection attacks
+# We allow tab (9), newline (10), and carriage return (13) as they may appear in legitimate filenames
+ASCII_CONTROL_THRESHOLD = 32
 
 def is_video_file(filename):
     """Check if file is a supported video format."""
@@ -56,7 +59,7 @@ def validate_filename(filename):
     """
     # Check for null bytes
     if '\x00' in filename:
-        logger.warning(f"Rejected filename with null byte: {repr(filename)}")
+        logger.warning(f"Rejected filename with null byte (length={len(filename)})")
         return False, (jsonify({'error': 'Invalid filename'}), 400)
     
     # Check for extremely long paths
@@ -65,8 +68,9 @@ def validate_filename(filename):
         return False, (jsonify({'error': 'Invalid filename'}), 400)
     
     # Check for control characters (ASCII 0-31 except tab, newline, carriage return)
-    if any(ord(c) < ASCII_CONTROL_THRESHOLD and c not in '\t\n\r' for c in filename):
-        logger.warning(f"Rejected filename with control characters: {repr(filename)}")
+    # Using regex for efficient validation
+    if re.search(r'[\x00-\x08\x0B\x0C\x0E-\x1F]', filename):
+        logger.warning(f"Rejected filename with control characters (length={len(filename)})")
         return False, (jsonify({'error': 'Invalid filename'}), 400)
     
     return True, None
