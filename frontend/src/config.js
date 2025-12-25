@@ -8,7 +8,7 @@
  * In production, VITE_API_URL must be set - no fallback to localhost
  * In development, falls back to localhost for convenience
  */
-export const getApiUrl = () => {
+const getApiUrl = () => {
   const apiUrl = import.meta.env.VITE_API_URL;
   
   // In production mode, require VITE_API_URL to be set
@@ -23,5 +23,6 @@ export const getApiUrl = () => {
   return apiUrl || 'http://localhost:5180';
 };
 
-// Export singleton API URL
+// Export the API URL constant - evaluated once at module load
+// This will fail fast at startup if misconfigured in production
 export const API_URL = getApiUrl();
