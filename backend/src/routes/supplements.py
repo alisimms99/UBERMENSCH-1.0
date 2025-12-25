@@ -63,10 +63,17 @@ def log_supplement():
     if not supplement_id:
         return jsonify({'error': 'supplement_id parameter is required'}), 400
     
+    # Validate user_id is provided
+    user_id = int(data.get('user_id', 1))
+    
     # Validate supplement exists before creating log entry
     supp = Supplement.query.get(supplement_id)
     if not supp:
         return jsonify({'error': f'Supplement with id {supplement_id} not found'}), 404
+    
+    # Validate supplement belongs to the specified user (security check)
+    if supp.user_id != user_id:
+        return jsonify({'error': f'Supplement with id {supplement_id} does not belong to user {user_id}'}), 403
     
     log_date_str = data.get('date', date.today().isoformat())
     try:
@@ -75,7 +82,7 @@ def log_supplement():
         return jsonify({'error': 'Invalid date format. Use YYYY-MM-DD'}), 400
     
     new_log = SupplementLog(
-        user_id=int(data.get('user_id', 1)),
+        user_id=user_id,
         supplement_id=supplement_id,
         date=log_date,
         time_taken=data.get('time_taken', datetime.now().strftime('%H:%M')),
@@ -83,7 +90,7 @@ def log_supplement():
         notes=data.get('notes')
     )
     
-    # Update inventory
+    # Update inventory (only for the supplement owner)
     if supp.inventory_json:
         inventory = json.loads(supp.inventory_json)
         if 'quantity_remaining' in inventory and inventory['quantity_remaining'] > 0:

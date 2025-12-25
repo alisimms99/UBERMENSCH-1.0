@@ -115,20 +115,19 @@ class WorkoutTemplateExercise(db.Model):
         # Safety check: ensure exercise relationship exists before accessing
         if not self.exercise:
             # Exercise relationship is broken or exercise was deleted
-            # Use template values directly (no defaults available)
-            # When exercise is missing, we can't determine if it's timed, so return stored value
-            # but note that this is a degraded state
+            # Return minimal error response to avoid ambiguous state
+            # Don't return target values as they're meaningless without exercise context
             return {
                 'id': self.id,
                 'exercise_id': self.exercise_id,
                 'exercise': None,
                 'phase': self.phase,
                 'sort_order': self.sort_order,
-                'target_reps': self.target_reps,
-                'target_sets': self.target_sets,  # May be invalid if exercise was timed, but we don't know
-                'target_duration_seconds': self.target_duration_seconds,
-                'rest_seconds': self.rest_seconds,
-                'error': 'Exercise not found'  # Always present: None when no error, string when error exists
+                'target_reps': None,  # Don't expose orphaned values
+                'target_sets': None,  # Don't expose orphaned values
+                'target_duration_seconds': None,  # Don't expose orphaned values
+                'rest_seconds': None,  # Don't expose orphaned values
+                'error': 'Exercise not found - this association references a deleted exercise'  # Always present: None when no error, string when error exists
             }
         
         # Normal case: exercise exists, use defaults as fallback
