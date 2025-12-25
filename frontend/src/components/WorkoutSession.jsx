@@ -29,6 +29,7 @@ export default function WorkoutSession({ user }) {
 
   useEffect(() => {
     loadTemplate()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [templateId])
 
   // Timer countdown effect
@@ -74,7 +75,7 @@ export default function WorkoutSession({ user }) {
 
   // Get video URL for current exercise (supports video_paths array or single video_path)
   const getVideoUrl = (exercise, videoIndex = null) => {
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5180'
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5180';
     
     // Check if exercise has multiple video options
     if (exercise?.video_paths && Array.isArray(exercise.video_paths) && exercise.video_paths.length > 0) {
@@ -85,23 +86,20 @@ export default function WorkoutSession({ user }) {
           ? exercise.video_paths.findIndex(v => v.is_default)
           : 0
       
-      const selectedVideo = exercise.video_paths[index]
+      const selectedVideo = exercise.video_paths[index];
       if (selectedVideo?.path) {
-        const url = `${apiUrl}/api/videos/stream/${encodeURIComponent(selectedVideo.path)}`
-        console.log(`Video URL (${selectedVideo.name}):`, url)
-        return url
+        const url = `${apiUrl}/api/videos/stream/${encodeURIComponent(selectedVideo.path)}`;
+        return url;
       }
     }
     
     // Fallback to single video_path
     if (exercise?.video_path) {
-      const url = `${apiUrl}/api/videos/stream/${encodeURIComponent(exercise.video_path)}`
-      console.log('Video URL (single):', url)
-      return url
+      const url = `${apiUrl}/api/videos/stream/${encodeURIComponent(exercise.video_path)}`;
+      return url;
     }
     
-    console.log('No video_path for exercise:', exercise?.name)
-    return null
+    return null;
   }
   
   // Get current selected video index for exercise
@@ -153,15 +151,14 @@ export default function WorkoutSession({ user }) {
         loadExerciseVideo(exercise?.id)
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [template, currentIndex, selectedVideoIndex])
 
   const loadTemplate = async () => {
     setLoading(true)
     setError(null)
     try {
-      console.log('Loading template with ID:', templateId)
-      const data = await apiService.getWorkoutTemplate(templateId)
-      console.log('Template loaded:', data)
+      const data = await apiService.getWorkoutTemplate(templateId);
       
       if (!data) {
         throw new Error('Template data is empty')
@@ -197,7 +194,8 @@ export default function WorkoutSession({ user }) {
     }
 
     try {
-      const response = await fetch(`http://localhost:5180/api/videos/exercise/${exerciseId}/videos`)
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5180';
+      const response = await fetch(`${apiUrl}/api/videos/exercise/${exerciseId}/videos`);
       if (response.ok) {
         const data = await response.json()
         // Get primary video or first video
@@ -461,17 +459,8 @@ export default function WorkoutSession({ user }) {
           {/* Video Player */}
           {(() => {
             const exercise = currentItem.exercise
-            const hasVideoPath = exercise?.video_path || (exercise?.video_paths && exercise.video_paths.length > 0)
-            const currentVideoIndex = getSelectedVideoIndex(exercise)
-            
-            console.log('Rendering video player:', {
-              exerciseName: exercise?.name,
-              hasVideoPath,
-              videoPath: exercise?.video_path,
-              videoPaths: exercise?.video_paths?.length || 0,
-              selectedIndex: currentVideoIndex,
-              currentVideo: currentVideo
-            })
+            const hasVideoPath = exercise?.video_path || (exercise?.video_paths && exercise.video_paths.length > 0);
+            const currentVideoIndex = getSelectedVideoIndex(exercise);
             
             if (hasVideoPath) {
               const videoUrl = getVideoUrl(exercise, currentVideoIndex)

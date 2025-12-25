@@ -1,5 +1,5 @@
 from flask import Blueprint, jsonify, request
-from ..models import db, ProgressEntry, Achievement, UserAchievement
+from ..models import db, ProgressEntry, Achievement, UserAchievement, User
 from datetime import datetime, date, timedelta
 from sqlalchemy import func
 import json
@@ -203,7 +203,8 @@ def get_user_achievements(user_id):
 @progress_bp.route('/users/<int:user_id>/check-achievements', methods=['POST'])
 def check_achievements(user_id):
     """Check and award new achievements for a user"""
-    user = User.query.get_or_404(user_id)
+    # Validate user exists
+    User.query.get_or_404(user_id)
     
     # Get user's current progress
     latest_progress = ProgressEntry.query.filter_by(user_id=user_id).order_by(ProgressEntry.date.desc()).first()

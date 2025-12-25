@@ -37,31 +37,31 @@ const VideoPlayer = ({
       return video.streaming_url
     }
     
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5180'
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5180';
     
     if (video.video_path) {
-      return `${apiUrl}/api/videos/stream/${encodeURIComponent(video.video_path)}`
+      return `${apiUrl}/api/videos/stream/${encodeURIComponent(video.video_path)}`;
     }
     
     if (video.id) {
-      return `${apiUrl}/api/videos/stream/${video.id}`
+      return `${apiUrl}/api/videos/stream/${video.id}`;
     }
     
-    return null
-  }
+    return null;
+  };
   
   const videoUrl = getVideoUrl();
 
   // Check transcoding status when video URL changes
   useEffect(() => {
     if (!videoUrl) {
-      setTranscodingStatus(null)
-      setTranscodingMessage('')
-      return
+      setTranscodingStatus(null);
+      setTranscodingMessage('');
+      return;
     }
     
     // Extract video path from URL to check transcoding status
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5180'
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5180';
     const streamPrefix = `${apiUrl}/api/videos/stream/`
     
     if (videoUrl.startsWith(streamPrefix)) {

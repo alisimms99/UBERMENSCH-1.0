@@ -1,7 +1,9 @@
 // Simplified Mock API service for demo purposes
+import API_CONFIG from './config.js'
+
 class ApiService {
   constructor() {
-    this.baseURL = 'http://localhost:5180/api'
+    this.baseURL = API_CONFIG.fullURL
     this.mockUser = null
     this.mockData = {
       exercises: [],

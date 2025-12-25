@@ -57,7 +57,10 @@ def send_file_partial(file_path):
         content_length = byte_end - byte_start + 1
         
         def generate():
-            with open(file_path, 'rb') as f:
+            # Use context manager to ensure file descriptor is properly closed
+            f = None
+            try:
+                f = open(file_path, 'rb')
                 f.seek(byte_start)
                 remaining = content_length
                 while remaining:
@@ -67,6 +70,10 @@ def send_file_partial(file_path):
                         break
                     remaining -= len(chunk)
                     yield chunk
+            finally:
+                # Explicitly close file descriptor to prevent leaks
+                if f is not None:
+                    f.close()
         
         response = Response(
             generate(),
@@ -264,10 +271,21 @@ def stream_video_by_path(filename):
         
         file_path = os.path.join(VIDEO_ROOT_PATH, video_path)
         
-        # Security check: ensure path is within VIDEO_ROOT_PATH
-        abs_video_root = os.path.abspath(VIDEO_ROOT_PATH)
-        abs_file_path = os.path.abspath(file_path)
-        if not abs_file_path.startswith(abs_video_root):
+        # Security check: prevent path traversal attacks
+        # Normalize paths to handle .. and . components
+        abs_video_root = os.path.abspath(os.path.normpath(VIDEO_ROOT_PATH))
+        abs_file_path = os.path.abspath(os.path.normpath(file_path))
+        
+        # Ensure the resolved path is within VIDEO_ROOT_PATH
+        # Use os.path.commonpath to prevent directory traversal
+        try:
+            common_path = os.path.commonpath([abs_video_root, abs_file_path])
+            if common_path != abs_video_root:
+                logger.warning(f"Path traversal attempt detected: {video_path}")
+                return jsonify({'error': 'Invalid video path'}), 403
+        except ValueError:
+            # Paths don't share a common base (shouldn't happen, but be safe)
+            logger.warning(f"Path traversal attempt detected: {video_path}")
             return jsonify({'error': 'Invalid video path'}), 403
         
         if not os.path.exists(file_path):
@@ -517,8 +535,9 @@ def map_video_to_exercise(exercise_id):
     try:
         data = request.get_json()
         
-        exercise = Exercise.query.get_or_404(exercise_id)
-        video = Video.query.get_or_404(data['video_id'])
+        # Validate exercise and video exist
+        Exercise.query.get_or_404(exercise_id)
+        Video.query.get_or_404(data['video_id'])
         
         # Check if mapping already exists
         existing = WorkoutVideoMapping.query.filter_by(

@@ -44,6 +44,7 @@ function AppContent() {
     if (savedDarkMode) {
       document.documentElement.classList.add('dark')
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const initializeUser = async () => {

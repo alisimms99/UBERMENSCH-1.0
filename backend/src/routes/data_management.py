@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from ..models import db, User, WorkoutTemplate, Exercise, VideoCategory, Video, WorkoutVideoMapping  # Updated import
+from ..models import db, User, WorkoutTemplate, Exercise, VideoCategory, Video, WorkoutVideoMapping, WorkoutSession, ExerciseCompletion, ProgressEntry
 from datetime import datetime, date
 import json
 

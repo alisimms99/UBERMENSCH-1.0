@@ -31,12 +31,14 @@ const VideoWorkoutSession = ({
       setPhaseStartTime(new Date());
       loadExerciseVideos();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [template]);
 
   useEffect(() => {
     if (currentPhase) {
       setPhaseStartTime(new Date());
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPhaseIndex]);
 
   const checkVideoServerStatus = async () => {

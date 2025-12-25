@@ -182,6 +182,38 @@ class WorkoutVideoMapping(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     exercise_id = db.Column(db.Integer, db.ForeignKey('exercises.id'), nullable=False)
     video_id = db.Column(db.Integer, db.ForeignKey('videos.id'), nullable=False)
+    
+    # Optional metadata fields
+    mapping_type = db.Column(db.String(50), default='instruction')  # instruction, demonstration, variation, etc.
+    is_primary = db.Column(db.Boolean, default=False)  # Primary video for this exercise
+    sort_order = db.Column(db.Integer, default=0)  # Order for multiple videos per exercise
+    start_time_seconds = db.Column(db.Integer, nullable=True)  # Start time for video segment
+    end_time_seconds = db.Column(db.Integer, nullable=True)  # End time for video segment
+    notes = db.Column(db.Text, nullable=True)  # Additional notes about this mapping
+    
+    def to_dict(self):
+        """Convert mapping to dictionary, including related video info"""
+        video_dict = None
+        if self.video:
+            video_dict = {
+                'id': self.video.id,
+                'title': self.video.title,
+                'file_path': self.video.file_path,
+                'filename': self.video.filename
+            }
+        
+        return {
+            'id': self.id,
+            'exercise_id': self.exercise_id,
+            'video_id': self.video_id,
+            'video': video_dict,
+            'mapping_type': self.mapping_type,
+            'is_primary': self.is_primary,
+            'sort_order': self.sort_order,
+            'start_time_seconds': self.start_time_seconds,
+            'end_time_seconds': self.end_time_seconds,
+            'notes': self.notes
+        }
 
 class ProgressEntry(db.Model):
     __tablename__ = 'progress_entries'

@@ -22,11 +22,13 @@ def initialize_database():
         db.drop_all()
         db.create_all()
         
+        # Create exercises first (templates depend on exercises)
+        exercises_result = create_enhanced_exercises()
+        if not exercises_result.get('success', False):
+            raise Exception(f"Failed to create exercises: {exercises_result.get('error', 'Unknown error')}")
+        
         if not create_enhanced_workout_templates():
             raise Exception("Failed to create workout templates")
-            
-        if not create_enhanced_exercises():
-            raise Exception("Failed to create exercises")
             
         if not seed_video_library():
             raise Exception("Failed to seed video library")

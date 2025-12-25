@@ -42,6 +42,7 @@ const EnhancedWorkoutSession = ({ template, user, onComplete, onCancel }) => {
   useEffect(() => {
     initializeExercises();
     setSessionStartTime(new Date());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [template, user]);
   
   useEffect(() => {

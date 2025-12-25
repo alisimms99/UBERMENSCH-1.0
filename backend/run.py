@@ -21,12 +21,16 @@ def initialize_database():
             db.drop_all()
             db.create_all()
             
-            if not all([
-                create_enhanced_exercises(),
-                create_enhanced_workout_templates(),
-                seed_video_library()
-            ]):
-                raise Exception("One or more seeding operations failed")
+            # Check each seeding operation explicitly
+            exercises_result = create_enhanced_exercises()
+            if not exercises_result.get('success', False):
+                raise Exception(f"Failed to create exercises: {exercises_result.get('error', 'Unknown error')}")
+            
+            if not create_enhanced_workout_templates():
+                raise Exception("Failed to create workout templates")
+            
+            if not seed_video_library():
+                raise Exception("Failed to seed video library")
                 
             db.session.commit()
             print("🎉 Database initialized successfully!")
