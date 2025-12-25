@@ -58,7 +58,7 @@ def transcode_to_h264(input_path, output_path):
     
     try:
         logger.info(f"Transcoding: {input_path}")
-        result = subprocess.run([
+        subprocess.run([
             'ffmpeg', '-i', input_path,
             '-c:v', 'libx264', '-preset', 'fast', '-crf', '23',
             '-c:a', 'aac', '-b:a', '192k',
