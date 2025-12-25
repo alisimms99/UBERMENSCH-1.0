@@ -31,24 +31,24 @@ const VideoPlayer = ({
   // 2. video.video_path (relative path - encode and use stream endpoint)
   // 3. video.id (legacy - use stream endpoint with ID)
   const getVideoUrl = () => {
-    if (!video) return null
+    if (!video) return null;
     
     if (video.streaming_url) {
-      return video.streaming_url
+      return video.streaming_url;
     }
     
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5180'
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5180';
     
     if (video.video_path) {
-      return `${apiUrl}/api/videos/stream/${encodeURIComponent(video.video_path)}`
+      return `${apiUrl}/api/videos/stream/${encodeURIComponent(video.video_path)}`;
     }
     
     if (video.id) {
-      return `${apiUrl}/api/videos/stream/${video.id}`
+      return `${apiUrl}/api/videos/stream/${video.id}`;
     }
     
-    return null
-  }
+    return null;
+  };
   
   const videoUrl = getVideoUrl();
 
