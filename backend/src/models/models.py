@@ -98,7 +98,7 @@ class Exercise(db.Model):
             'default_duration_seconds': self.default_duration_seconds,
             'default_rest_seconds': self.default_rest_seconds,
             'video_path': self.video_path,
-            'video_paths': self.video_paths if self.video_paths else []
+            'video_paths': self.video_paths if self.video_paths is not None else []
         }
 
 class WorkoutTemplateExercise(db.Model):
