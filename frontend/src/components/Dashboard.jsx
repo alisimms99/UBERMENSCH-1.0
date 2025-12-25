@@ -38,8 +38,10 @@ export default function Dashboard({ user }) {
   const [templatesError, setTemplatesError] = useState(null)
 
   useEffect(() => {
+    if (!user?.id) return
     loadDashboardData()
-  }, [user])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id])
   useEffect(() => {
     setTemplatesLoading(true)
     apiService.getWorkoutTemplates()

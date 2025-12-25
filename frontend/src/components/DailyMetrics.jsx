@@ -32,17 +32,20 @@ export default function DailyMetrics({ user }) {
     })
 
     useEffect(() => {
+        if (!user?.id) return
         loadMetrics()
-    }, [])
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [user?.id])
 
     const loadMetrics = async () => {
+        if (!user?.id) return
         const today = new Date().toISOString().split('T')[0]
         try {
             const data = await apiService.getDailyMetrics(today, user.id)
             if (data) {
                 setMetrics(data)
-                if (data.morning.wake_time) setMorningForm({ ...morningForm, ...data.morning })
-                if (data.evening.energy_level) setEveningForm({ ...eveningForm, ...data.evening })
+                if (data.morning?.wake_time) setMorningForm(prev => ({ ...prev, ...data.morning }))
+                if (data.evening?.energy_level) setEveningForm(prev => ({ ...prev, ...data.evening }))
             }
         } catch (error) {
             console.error("Failed to load metrics:", error)
