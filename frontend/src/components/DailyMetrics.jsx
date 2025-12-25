@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Slider } from '@/components/ui/slider'
@@ -11,6 +11,7 @@ import { apiService } from '../lib/api'
 export default function DailyMetrics({ user }) {
     const [metrics, setMetrics] = useState(null)
     const [loading, setLoading] = useState(true)
+    const didLoadRef = useRef(false)
 
     // Morning Form State
     const [morningForm, setMorningForm] = useState({
@@ -32,7 +33,10 @@ export default function DailyMetrics({ user }) {
     })
 
     useEffect(() => {
+        // Load once when user becomes available (prevents refetch loops)
+        if (didLoadRef.current) return
         if (!user?.id) return
+        didLoadRef.current = true
         loadMetrics()
     }, [user?.id])
 

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
@@ -28,6 +28,7 @@ import DiaryEntry from './DiaryEntry'
 export default function Dashboard({ user }) {
   const navigate = useNavigate()
   const handleStartWorkout = (templateId) => navigate(`/workout/template/${templateId}`)
+  const didLoadDashboardRef = useRef(false)
   const [todayProgress, setTodayProgress] = useState(null)
   const [todayWorkout, setTodayWorkout] = useState(null)
   const [workoutStats, setWorkoutStats] = useState(null)
@@ -38,7 +39,10 @@ export default function Dashboard({ user }) {
   const [templatesError, setTemplatesError] = useState(null)
 
   useEffect(() => {
+    // Load once when user becomes available (prevents refetch loops)
+    if (didLoadDashboardRef.current) return
     if (!user?.id) return
+    didLoadDashboardRef.current = true
     loadDashboardData()
   }, [user?.id])
   useEffect(() => {

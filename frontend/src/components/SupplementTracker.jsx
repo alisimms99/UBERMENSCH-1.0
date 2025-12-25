@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -12,9 +12,13 @@ export default function SupplementTracker({ user }) {
     const [logs, setLogs] = useState([])
     const [loading, setLoading] = useState(true)
     const [activeTab, setActiveTab] = useState('schedule')
+    const didLoadRef = useRef(false)
 
     useEffect(() => {
+        // Load once when user becomes available (prevents refetch loops)
+        if (didLoadRef.current) return
         if (!user?.id) return
+        didLoadRef.current = true
         loadData()
     }, [user?.id])
 
