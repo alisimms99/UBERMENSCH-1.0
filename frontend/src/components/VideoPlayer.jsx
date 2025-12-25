@@ -133,6 +133,7 @@ const VideoPlayer = ({
         .then(data => {
           // If transcoding is complete (cache now exists)
           if (!data.needs_transcoding || data.cache_exists) {
+            clearInterval(pollInterval);
             setTranscodingStatus('ready');
             setTranscodingMessage('');
             // Clear loading state to allow video to play
@@ -141,7 +142,6 @@ const VideoPlayer = ({
         })
         .catch(err => {
           console.error('Failed to poll transcode status:', err);
-          // Don't stop polling on individual errors, but increment attempt counter
         });
     }, 2000); // Poll every 2 seconds
 
