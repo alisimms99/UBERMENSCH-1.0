@@ -62,12 +62,12 @@ def validate_filename(filename):
     # Check for extremely long paths
     if len(filename) > MAX_PATH_LENGTH:
         logger.warning(f"Rejected excessively long filename (length={len(filename)})")
-        return False, (jsonify({'error': 'Filename too long'}), 400)
+        return False, (jsonify({'error': 'Invalid filename'}), 400)
     
     # Check for control characters (ASCII 0-31 except tab, newline, carriage return)
     if any(ord(c) < ASCII_CONTROL_THRESHOLD and c not in '\t\n\r' for c in filename):
         logger.warning(f"Rejected filename with control characters: {repr(filename)}")
-        return False, (jsonify({'error': 'Filename contains invalid control characters'}), 400)
+        return False, (jsonify({'error': 'Invalid filename'}), 400)
     
     return True, None
 
