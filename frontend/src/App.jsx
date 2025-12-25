@@ -8,6 +8,7 @@ import './App.css'
 import Dashboard from './components/Dashboard'
 import WorkoutSession from './components/WorkoutSession'
 import WorkoutDetail from './components/WorkoutDetail'
+import WorkoutTemplates from './components/WorkoutTemplates'
 import Progress from './components/Progress'
 import Profile from './components/Profile'
 import Navigation from './components/Navigation'
@@ -116,7 +117,11 @@ function App() {
             />
             <Route
               path="/workout"
-              element={<Navigate to="/" />}
+              element={
+                <MainLayout user={user} darkMode={darkMode} toggleDarkMode={toggleDarkMode}>
+                  <WorkoutTemplates user={user} />
+                </MainLayout>
+              }
             />
             {/* Sprint 2 Routes */}
             <Route

@@ -6,6 +6,7 @@ import './App.css'
 // Import components
 import Dashboard from './components/Dashboard'
 import WorkoutSession from './components/WorkoutSession'
+import WorkoutTemplates from './components/WorkoutTemplates'
 import Progress from './components/Progress'
 import Profile from './components/Profile'
 import Navigation from './components/Navigation'
@@ -201,13 +202,13 @@ function AppContent() {
               } 
             />
             
-            {/* Workout Session */}
+            {/* Workout Templates */}
             <Route 
               path="/workout" 
               element={
                 <MainLayout user={user} darkMode={darkMode} toggleDarkMode={toggleDarkMode}>
                   <WorkoutErrorBoundary>
-                    <WorkoutSession user={user} />
+                    <WorkoutTemplates user={user} />
                   </WorkoutErrorBoundary>
                 </MainLayout>
               } 

@@ -14,10 +14,13 @@ export default function SupplementTracker({ user }) {
     const [activeTab, setActiveTab] = useState('schedule')
 
     useEffect(() => {
+        if (!user?.id) return
         loadData()
-    }, [user])
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [user?.id])
 
     const loadData = async () => {
+        if (!user?.id) return
         try {
             setLoading(true)
             const dateStr = new Date().toISOString().split('T')[0]
