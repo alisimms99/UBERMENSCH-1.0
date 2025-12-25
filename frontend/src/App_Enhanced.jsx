@@ -5,8 +5,8 @@ import './App.css'
 
 // Import components
 import Dashboard from './components/Dashboard'
-import Onboarding from './components/Onboarding'
 import WorkoutSession from './components/WorkoutSession'
+import WorkoutTemplates from './components/WorkoutTemplates'
 import Progress from './components/Progress'
 import Profile from './components/Profile'
 import Navigation from './components/Navigation'
@@ -183,17 +183,6 @@ function AppContent() {
     )
   }
 
-  // If user hasn't completed onboarding, show onboarding flow
-  if (user && !user.onboarding_completed) {
-    return (
-      <div className="min-h-screen bg-background">
-        <ErrorBoundary>
-          <Onboarding user={user} setUser={updateUser} />
-        </ErrorBoundary>
-      </div>
-    )
-  }
-
   return (
     <Router>
       <div className="min-h-screen bg-background">
@@ -213,13 +202,13 @@ function AppContent() {
               } 
             />
             
-            {/* Workout Session */}
+            {/* Workout Templates */}
             <Route 
               path="/workout" 
               element={
                 <MainLayout user={user} darkMode={darkMode} toggleDarkMode={toggleDarkMode}>
                   <WorkoutErrorBoundary>
-                    <WorkoutSession user={user} />
+                    <WorkoutTemplates user={user} />
                   </WorkoutErrorBoundary>
                 </MainLayout>
               } 
