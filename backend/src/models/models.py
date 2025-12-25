@@ -111,16 +111,23 @@ class WorkoutTemplateExercise(db.Model):
     def to_dict(self):
         # Merge exercise details with template overrides
         base_exercise = self.exercise.to_dict()
+        target_reps = self.target_reps if self.target_reps is not None else base_exercise['default_reps']
+        target_duration_seconds = (
+            self.target_duration_seconds
+            if self.target_duration_seconds is not None
+            else base_exercise['default_duration_seconds']
+        )
+        rest_seconds = self.rest_seconds if self.rest_seconds is not None else base_exercise['default_rest_seconds']
         return {
             'id': self.id,
             'exercise_id': self.exercise_id,
             'exercise': base_exercise,
             'phase': self.phase,
             'sort_order': self.sort_order,
-            'target_reps': self.target_reps or base_exercise['default_reps'],
+            'target_reps': target_reps,
             'target_sets': self.target_sets,
-            'target_duration_seconds': self.target_duration_seconds or base_exercise['default_duration_seconds'],
-            'rest_seconds': self.rest_seconds or base_exercise['default_rest_seconds']
+            'target_duration_seconds': target_duration_seconds,
+            'rest_seconds': rest_seconds
         }
 
 class VideoCategory(db.Model):

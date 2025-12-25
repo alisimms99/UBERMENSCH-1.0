@@ -5,9 +5,19 @@ import json
 
 metrics_bp = Blueprint('metrics', __name__)
 
+def _parse_yyyy_mm_dd(date_str):
+    if not date_str:
+        return None, jsonify({"error": "Missing required field: date (YYYY-MM-DD)"}), 400
+    try:
+        return datetime.strptime(date_str, '%Y-%m-%d').date(), None, None
+    except ValueError:
+        return None, jsonify({"error": "Invalid date format. Expected YYYY-MM-DD."}), 400
+
 @metrics_bp.route('/daily/<date_str>', methods=['GET'])
 def get_daily_metrics(date_str):
-    target_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+    target_date, err_resp, err_code = _parse_yyyy_mm_dd(date_str)
+    if err_resp:
+        return err_resp, err_code
     user_id = request.args.get('user_id', 1)
     
     metrics = DailyMetrics.query.filter_by(user_id=user_id, date=target_date).first()
@@ -19,9 +29,11 @@ def get_daily_metrics(date_str):
 
 @metrics_bp.route('/morning', methods=['POST'])
 def save_morning_checkin():
-    data = request.json
+    data = request.get_json(silent=True) or {}
     date_str = data.get('date')
-    target_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+    target_date, err_resp, err_code = _parse_yyyy_mm_dd(date_str)
+    if err_resp:
+        return err_resp, err_code
     user_id = data.get('user_id', 1)
     
     metrics = DailyMetrics.query.filter_by(user_id=user_id, date=target_date).first()
@@ -45,9 +57,11 @@ def save_morning_checkin():
 
 @metrics_bp.route('/evening', methods=['POST'])
 def save_evening_checkin():
-    data = request.json
+    data = request.get_json(silent=True) or {}
     date_str = data.get('date')
-    target_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+    target_date, err_resp, err_code = _parse_yyyy_mm_dd(date_str)
+    if err_resp:
+        return err_resp, err_code
     user_id = data.get('user_id', 1)
     
     metrics = DailyMetrics.query.filter_by(user_id=user_id, date=target_date).first()
@@ -72,9 +86,11 @@ def save_evening_checkin():
 @metrics_bp.route('/update_day', methods=['POST'])
 def update_day_metrics():
     # Update throughout day metrics (water, steps, etc)
-    data = request.json
+    data = request.get_json(silent=True) or {}
     date_str = data.get('date')
-    target_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+    target_date, err_resp, err_code = _parse_yyyy_mm_dd(date_str)
+    if err_resp:
+        return err_resp, err_code
     user_id = data.get('user_id', 1)
     
     metrics = DailyMetrics.query.filter_by(user_id=user_id, date=target_date).first()

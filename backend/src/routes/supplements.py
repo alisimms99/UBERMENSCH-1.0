@@ -58,13 +58,20 @@ def update_supplement(id):
 @supplements_bp.route('/log', methods=['POST'])
 def log_supplement():
     # Log that a supplement was taken
-    data = request.json
+    data = request.get_json(silent=True) or {}
     log_date_str = data.get('date', date.today().isoformat())
-    log_date = datetime.strptime(log_date_str, '%Y-%m-%d').date()
+    try:
+        log_date = datetime.strptime(log_date_str, '%Y-%m-%d').date()
+    except ValueError:
+        return jsonify({"error": "Invalid date format. Expected YYYY-MM-DD."}), 400
+
+    supplement_id = data.get('supplement_id')
+    if supplement_id is None:
+        return jsonify({"error": "Missing required field: supplement_id"}), 400
     
     new_log = SupplementLog(
         user_id=data.get('user_id', 1),
-        supplement_id=data['supplement_id'],
+        supplement_id=supplement_id,
         date=log_date,
         time_taken=data.get('time_taken', datetime.now().strftime('%H:%M')),
         taken=data.get('taken', True),
@@ -72,7 +79,7 @@ def log_supplement():
     )
     
     # Update inventory
-    supp = Supplement.query.get(data['supplement_id'])
+    supp = Supplement.query.get(supplement_id)
     if supp and supp.inventory_json:
         inventory = json.loads(supp.inventory_json)
         if 'quantity_remaining' in inventory and inventory['quantity_remaining'] > 0:
