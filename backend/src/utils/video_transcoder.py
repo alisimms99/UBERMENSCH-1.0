@@ -54,7 +54,7 @@ def transcode_to_h264(input_path, output_path):
     Uses 'fast' preset for reasonable speed/quality balance
     
     Returns:
-        True if transcoding succeeded (or already in progress by another process)
+        True if transcoding succeeded
         False if transcoding failed
         None if another process is already transcoding (caller should retry)
     """
@@ -63,6 +63,7 @@ def transcode_to_h264(input_path, output_path):
     # Create temp file first, then rename (atomic operation)
     temp_path = output_path + '.tmp'
     lock_path = output_path + '.lock'
+    lock_file = None
     
     # Try to acquire exclusive lock to prevent race condition
     try:
@@ -72,10 +73,19 @@ def transcode_to_h264(input_path, output_path):
         if e.errno == errno.EWOULDBLOCK:
             # Another process is transcoding, return None to signal retry
             logger.info(f"Another process is already transcoding: {input_path}")
+            if lock_file:
+                lock_file.close()
             return None
         else:
             logger.error(f"Failed to acquire lock: {e}")
+            if lock_file:
+                lock_file.close()
             return False
+    except Exception as e:
+        logger.error(f"Unexpected error acquiring lock: {e}")
+        if lock_file:
+            lock_file.close()
+        return False
     
     try:
         # Double-check if output already exists (another process may have finished)
@@ -121,13 +131,14 @@ def transcode_to_h264(input_path, output_path):
         return False
     finally:
         # Release lock and cleanup
-        try:
-            fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
-            lock_file.close()
-            if os.path.exists(lock_path):
-                os.remove(lock_path)
-        except Exception as e:
-            logger.error(f"Error releasing lock: {e}")
+        if lock_file:
+            try:
+                fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
+                lock_file.close()
+                if os.path.exists(lock_path):
+                    os.remove(lock_path)
+            except Exception as e:
+                logger.error(f"Error releasing lock: {e}")
 
 def get_playable_path(original_path):
     """
