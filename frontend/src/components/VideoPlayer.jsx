@@ -129,7 +129,12 @@ const VideoPlayer = ({
       }
       
       fetch(`${apiUrl}/api/videos/transcode-status/${urlPath}`)
-        .then(res => res.json())
+        .then(res => {
+          if (!res.ok) {
+            throw new Error(`HTTP error! status: ${res.status}`);
+          }
+          return res.json();
+        })
         .then(data => {
           // If transcoding is complete (cache now exists)
           if (!data.needs_transcoding || data.cache_exists) {
@@ -142,6 +147,7 @@ const VideoPlayer = ({
         })
         .catch(err => {
           console.error('Failed to poll transcode status:', err);
+          // Continue polling on individual errors - transcoding may still be in progress
         });
     }, 2000); // Poll every 2 seconds
 
