@@ -23,6 +23,10 @@ from ..utils.video_transcoder import (
     transcode_to_h264,
     get_video_codec
 )
+from ..tasks.transcode_tasks import (
+    enqueue_transcode_job,
+    get_job_status
+)
 
 logger = logging.getLogger(__name__)
 
@@ -287,7 +291,30 @@ def stream_video_by_path(filename):
         # Need to transcode - check if transcoding is in progress or start it
         cache_path = get_cache_path(file_path)
         
-        # Check if cache is being created (temp file exists)
+        # Check job status from RQ
+        job_status = get_job_status(file_path)
+        
+        if job_status:
+            # Job exists in queue
+            if job_status['status'] in ['queued', 'started']:
+                # Transcoding in progress
+                return jsonify({
+                    'error': 'Video is being prepared for playback',
+                    'status': 'transcoding',
+                    'job_status': job_status['status'],
+                    'message': 'Please wait and try again in a moment'
+                }), 202
+            elif job_status['status'] == 'finished':
+                # Job finished, cache should exist
+                if os.path.exists(cache_path):
+                    return send_file_partial(cache_path)
+                else:
+                    logger.warning(f"Job finished but cache missing: {cache_path}")
+            elif job_status['status'] == 'failed':
+                logger.error(f"Previous transcoding job failed: {file_path}")
+                # Fall through to retry
+        
+        # Check if cache is being created (temp file exists - fallback check)
         if os.path.exists(cache_path + '.tmp'):
             # Transcoding in progress - return 202 Accepted with retry-after
             return jsonify({
@@ -296,17 +323,30 @@ def stream_video_by_path(filename):
                 'message': 'Please wait and try again in a moment'
             }), 202
         
-        # Start transcoding (this will block - consider async for large files)
-        logger.info(f"Starting transcoding for: {file_path}")
-        if transcode_to_h264(file_path, cache_path):
-            logger.info(f"Transcoding complete, serving: {cache_path}")
-            return send_file_partial(cache_path)
-        else:
-            logger.error(f"Transcoding failed for: {file_path}")
+        # Start async transcoding
+        logger.info(f"Enqueuing transcoding job for: {file_path}")
+        job = enqueue_transcode_job(file_path, cache_path)
+        
+        if job:
+            # Successfully enqueued - return 202 Accepted
             return jsonify({
-                'error': 'Video transcoding failed',
-                'message': 'Unable to prepare video for playback'
-            }), 500
+                'error': 'Video transcoding has been queued',
+                'status': 'queued',
+                'job_id': job.id,
+                'message': 'Please wait and try again in a moment. Check /transcode-status endpoint for progress.'
+            }), 202
+        else:
+            # RQ not available, fall back to synchronous transcoding
+            logger.warning(f"RQ unavailable, falling back to sync transcoding for: {file_path}")
+            if transcode_to_h264(file_path, cache_path):
+                logger.info(f"Transcoding complete, serving: {cache_path}")
+                return send_file_partial(cache_path)
+            else:
+                logger.error(f"Transcoding failed for: {file_path}")
+                return jsonify({
+                    'error': 'Video transcoding failed',
+                    'message': 'Unable to prepare video for playback'
+                }), 500
     
     except Exception as e:
         logger.error(f"Error streaming video: {str(e)}")
@@ -394,13 +434,22 @@ def transcode_status(filename):
         cache_exists = os.path.exists(cache_path)
         transcoding_in_progress = os.path.exists(cache_path + '.tmp')
         
-        return jsonify({
+        # Get job status from RQ if available
+        job_status = get_job_status(file_path)
+        
+        response_data = {
             'needs_transcoding': needs_tc,
             'cache_exists': cache_exists,
-            'transcoding_in_progress': transcoding_in_progress,
+            'transcoding_in_progress': transcoding_in_progress or (job_status and job_status['status'] in ['queued', 'started']),
             'ready': not needs_tc or cache_exists,
             'codec': get_video_codec(file_path) if needs_tc else 'h264'
-        })
+        }
+        
+        # Add job info if available
+        if job_status:
+            response_data['job'] = job_status
+        
+        return jsonify(response_data)
     except Exception as e:
         logger.error(f"Error checking transcode status: {str(e)}")
         return jsonify({'error': str(e)}), 500
@@ -441,28 +490,48 @@ def trigger_transcode():
                 'cache_path': cache_path
             })
         
-        # Check if already transcoding
+        # Check if already transcoding via job queue
+        job_status = get_job_status(file_path)
+        if job_status and job_status['status'] in ['queued', 'started']:
+            return jsonify({
+                'status': 'in_progress',
+                'message': 'Transcoding already in progress',
+                'job': job_status
+            })
+        
+        # Check if already transcoding (fallback check)
         if os.path.exists(cache_path + '.tmp'):
             return jsonify({
                 'status': 'in_progress',
                 'message': 'Transcoding already in progress'
             })
         
-        # Start transcoding (synchronous - consider async for production)
-        logger.info(f"Triggering transcoding for: {file_path}")
-        success = transcode_to_h264(file_path, cache_path)
+        # Start async transcoding
+        logger.info(f"Triggering async transcoding for: {file_path}")
+        job = enqueue_transcode_job(file_path, cache_path)
         
-        if success:
+        if job:
             return jsonify({
-                'status': 'complete',
-                'message': 'Transcoding completed successfully',
-                'cache_path': cache_path
+                'status': 'queued',
+                'message': 'Transcoding job queued successfully',
+                'job_id': job.id
             })
         else:
-            return jsonify({
-                'status': 'failed',
-                'message': 'Transcoding failed'
-            }), 500
+            # RQ not available, fall back to synchronous transcoding
+            logger.warning(f"RQ unavailable, falling back to sync transcoding for: {file_path}")
+            success = transcode_to_h264(file_path, cache_path)
+            
+            if success:
+                return jsonify({
+                    'status': 'complete',
+                    'message': 'Transcoding completed successfully (synchronous fallback)',
+                    'cache_path': cache_path
+                })
+            else:
+                return jsonify({
+                    'status': 'failed',
+                    'message': 'Transcoding failed'
+                }), 500
     
     except Exception as e:
         logger.error(f"Error triggering transcode: {str(e)}")
