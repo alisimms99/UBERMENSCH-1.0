@@ -262,7 +262,7 @@ def stream_video_by_path(filename):
         video_path = os.path.normpath(video_path)
         
         # Security check 1: Reject empty paths or current directory references
-        if not video_path or video_path == '.' or video_path == '':
+        if not video_path or video_path == '.':
             return jsonify({'error': 'Invalid video path'}), 403
         
         # Security check 2: Reject absolute paths
@@ -271,7 +271,7 @@ def stream_video_by_path(filename):
         
         # Security check 3: Reject paths that try to escape using '..'
         # After normpath, any remaining '..' indicates traversal attempt
-        if video_path.startswith('..') or '/..' in video_path or '\\..\\' in video_path:
+        if video_path.startswith('..') or (os.sep + '..') in video_path:
             return jsonify({'error': 'Invalid video path'}), 403
         
         # Security check 4: Ensure path is within VIDEO_ROOT_PATH after joining
@@ -332,9 +332,20 @@ def stream_video(video_id):
         
         # Security: Validate database-sourced path to prevent database poisoning attacks
         video_path = os.path.normpath(video.file_path)
-        if os.path.isabs(video_path) or video_path.startswith('..'):
+        
+        # Security check 1: Reject empty paths or current directory references
+        if not video_path or video_path == '.':
             return jsonify({'error': 'Invalid video path'}), 403
         
+        # Security check 2: Reject absolute paths
+        if os.path.isabs(video_path):
+            return jsonify({'error': 'Invalid video path'}), 403
+        
+        # Security check 3: Reject paths that try to escape using '..'
+        if video_path.startswith('..') or (os.sep + '..') in video_path:
+            return jsonify({'error': 'Invalid video path'}), 403
+        
+        # Security check 4: Ensure path is within VIDEO_ROOT_PATH after joining
         abs_video_root = os.path.abspath(VIDEO_ROOT_PATH)
         file_path = os.path.join(abs_video_root, video_path)
         abs_file_path = os.path.abspath(file_path)
