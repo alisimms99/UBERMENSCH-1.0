@@ -36,6 +36,7 @@ const VideoLibraryBrowser = ({ onVideoSelect, onAddToWorkout }) => {
     if (selectedCategory) {
       loadCategoryVideos(selectedCategory.id);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedCategory, searchQuery, filters, sortBy]);
 
   const checkVideoServerStatus = async () => {

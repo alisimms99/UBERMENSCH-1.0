@@ -16,9 +16,29 @@ def create_enhanced_exercises():
         # 1. Define Reusable Exercises
         exercises_data = [
             # Qigong
-            {'name': '8 Brocades Sequence', 'category': 'qigong', 'is_timed': True, 'is_reps': False, 'default_duration_seconds': 600},
-            {'name': 'Standing Meditation', 'category': 'qigong', 'is_timed': True, 'is_reps': False, 'default_duration_seconds': 300},
-            {'name': 'Cloud Hands', 'category': 'qigong', 'is_timed': True, 'is_reps': False, 'default_duration_seconds': 180},
+            {
+                'name': '8 Brocades Sequence', 
+                'category': 'qigong', 
+                'is_timed': True, 
+                'is_reps': False, 
+                'default_duration_seconds': 600,
+                'video_path': 'Breath Work, Tai Chi & Qi Gong/!Chi Gong/!Movements/!Ba Duan Jin/Health Qigong - Ba duan Jin _ Eight Pieces of Brocade(ipad).mp4'
+            },
+            {
+                'name': 'Standing Meditation', 
+                'category': 'qigong', 
+                'is_timed': True, 
+                'is_reps': False, 
+                'default_duration_seconds': 300,
+                'video_path': 'Breath Work, Tai Chi & Qi Gong/!Chi Gong/Ken Cohen - The Essential Qigong Training Course/Qigong DVD/07. Gathering and Circulating Qi - Standing Meditation.avi'
+            },
+            {
+                'name': 'Cloud Hands', 
+                'category': 'qigong', 
+                'is_timed': True, 
+                'is_reps': False, 
+                'default_duration_seconds': 180
+            },
             
             # Warmup
             {'name': 'Arm Circles', 'category': 'warmup', 'is_timed': False, 'is_reps': True, 'default_reps': 20},

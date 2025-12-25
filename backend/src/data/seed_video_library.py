@@ -11,7 +11,7 @@ from flask import current_app
 # Add the src directory to the path
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
-from ..models import db, VideoCategory, Exercise, WorkoutTemplate  # Fixed import
+from ..models import db, VideoCategory, Exercise, WorkoutTemplate, Video, WorkoutVideoMapping
 
 def create_video_categories():
     """Create video categories based on the user's library structure."""
@@ -251,15 +251,10 @@ def create_video_categories():
     created_categories = []
     
     for category_data in categories_data:
-        # Create main category
+        # Create main category (only using fields that exist in the model)
         category = VideoCategory(
             name=category_data['name'],
-            display_name=category_data['display_name'],
-            folder_path=category_data['folder_path'],
-            description=category_data['description'],
-            icon=category_data.get('icon'),
-            sort_order=category_data['sort_order'],
-            is_active=True
+            display_name=category_data.get('display_name') or category_data['name']
         )
         
         db.session.add(category)
@@ -271,13 +266,8 @@ def create_video_categories():
             for sub_data in category_data['subcategories']:
                 subcategory = VideoCategory(
                     name=sub_data['name'],
-                    display_name=sub_data['display_name'],
-                    folder_path=sub_data['folder_path'],
-                    description=sub_data['description'],
-                    icon=sub_data.get('icon'),
-                    sort_order=sub_data['sort_order'],
-                    parent_id=category.id,
-                    is_active=True
+                    display_name=sub_data.get('display_name') or sub_data['name'],
+                    parent_id=category.id
                 )
                 
                 db.session.add(subcategory)

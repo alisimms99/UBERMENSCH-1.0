@@ -341,33 +341,50 @@ export default function Dashboard({ user }) {
               <div className="text-red-500">{templatesError}</div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {templates.map(template => (
-                  <div
-                    key={template.id}
-                    className="flex items-start justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors cursor-pointer group"
-                    onClick={() => handleStartWorkout(template.id)}
-                  >
-                    <div>
-                      <h3 className="font-semibold text-foreground text-lg group-hover:text-primary transition-colors">
-                        {template.name}
-                      </h3>
-                      <div className="flex gap-2 mt-2">
-                        <Badge variant="secondary" className="text-xs">
-                          {template.difficulty_level || 'General'}
-                        </Badge>
-                        <Badge variant="outline" className="text-xs">
-                          {template.estimated_duration_min}-{template.estimated_duration_max} min
-                        </Badge>
+                {templates.map(template => {
+                  const exerciseCount = template.exercises?.length || 0
+                  const exerciseNames = (template.exercises
+                    ?.filter(ex => ex.exercise) // Filter out any orphaned exercises
+                    ?.map(ex => ex.exercise.name)
+                    ?.slice(0, 4)) || [] // Show first 4 exercises
+                  
+                  return (
+                    <div
+                      key={template.id}
+                      className="flex items-start justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors cursor-pointer group"
+                      onClick={() => handleStartWorkout(template.id)}
+                    >
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-foreground text-lg group-hover:text-primary transition-colors">
+                          {template.name}
+                        </h3>
+                        <div className="flex gap-2 mt-2 flex-wrap">
+                          <Badge variant="secondary" className="text-xs">
+                            {template.difficulty_level || 'General'}
+                          </Badge>
+                          <Badge variant="outline" className="text-xs">
+                            {template.estimated_duration_min}-{template.estimated_duration_max} min
+                          </Badge>
+                          <Badge variant="outline" className="text-xs">
+                            {exerciseCount} {exerciseCount === 1 ? 'exercise' : 'exercises'}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
+                          {template.description}
+                        </p>
+                        {exerciseNames.length > 0 && (
+                          <p className="text-xs text-muted-foreground mt-2 line-clamp-1">
+                            <span className="font-medium">Includes:</span> {exerciseNames.join(', ')}
+                            {exerciseCount > exerciseNames.length && ` +${exerciseCount - exerciseNames.length} more`}
+                          </p>
+                        )}
                       </div>
-                      <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
-                        {template.description}
-                      </p>
+                      <Button size="icon" variant="ghost" className="mt-1 ml-2">
+                        <Play className="w-6 h-6 text-primary" />
+                      </Button>
                     </div>
-                    <Button size="icon" variant="ghost" className="mt-1">
-                      <Play className="w-6 h-6 text-primary" />
-                    </Button>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )}
           </CardContent>

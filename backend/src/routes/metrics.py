@@ -17,7 +17,38 @@ def get_daily_metrics(date_str):
     metrics = DailyMetrics.query.filter_by(user_id=user_id, date=target_date).first()
     
     if not metrics:
-        return jsonify({'error': 'Metrics not found for the specified date'}), 404
+        # Return empty/default metrics object instead of 404
+        # This allows frontend to display empty forms for new days
+        # Structure matches DailyMetrics.to_dict() format
+        return jsonify({
+            'id': None,
+            'date': target_date.isoformat(),
+            'morning': {
+                'wake_time': None,
+                'sleep_quality': None,
+                'energy_level': None,
+                'mood': None,
+                'weight': None,
+                'symptoms': [],
+                'notes': None
+            },
+            'evening': {
+                'energy_level': None,
+                'mood': None,
+                'libido': None,
+                'stress_level': None,
+                'cramping': None,
+                'symptoms': [],
+                'notes': None
+            },
+            'throughout_day': {
+                'water_oz': None,
+                'movement_minutes': None,
+                'steps': None,
+                'bowel_movements': None,
+                'supplements_taken': False
+            }
+        })
         
     return jsonify(metrics.to_dict())
 

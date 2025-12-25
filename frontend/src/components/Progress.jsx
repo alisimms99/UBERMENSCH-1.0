@@ -24,6 +24,7 @@ export default function Progress({ user }) {
 
   useEffect(() => {
     loadProgressData()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, timeRange])
 
   const loadProgressData = async () => {

@@ -14,6 +14,7 @@ export default function WorkoutDetail({ user }) {
 
     useEffect(() => {
         loadTemplate()
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [templateId])
 
     const loadTemplate = async () => {

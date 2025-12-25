@@ -5,15 +5,26 @@ Handles video streaming, library management, and workout-video integration
 
 from flask import Blueprint, request, jsonify, send_file, Response
 from werkzeug.utils import secure_filename
+from urllib.parse import unquote
 import os
 import mimetypes
 import json
 from datetime import datetime
 import subprocess
 import re
+import logging
 
 from ..models import db, VideoCategory, Video, WorkoutVideoMapping, VideoPlaylist, VideoPlaylistItem
-from ..models import Exercise
+from ..models import Exercise, TranscodeJob
+from ..utils.video_transcoder import (
+    needs_transcoding,
+    get_cache_path,
+    get_playable_path,
+    get_video_codec
+)
+from ..utils.transcode_manager import create_or_get_job, enqueue_job, get_job_status, get_job_id
+
+logger = logging.getLogger(__name__)
 
 # Create blueprint
 video_bp = Blueprint('video', __name__, url_prefix='/api/videos')
@@ -26,6 +37,62 @@ SUPPORTED_FORMATS = ['.mp4', '.avi', '.mov', '.mkv', '.wmv', '.flv', '.webm']
 def is_video_file(filename):
     """Check if file is a supported video format."""
     return any(filename.lower().endswith(ext) for ext in SUPPORTED_FORMATS)
+
+def send_file_partial(file_path):
+    """Send file with range request support for video seeking."""
+    file_size = os.path.getsize(file_path)
+    
+    # Handle range requests for video seeking
+    range_header = request.headers.get('Range', None)
+    if range_header:
+        byte_start = 0
+        byte_end = file_size - 1
+        
+        range_match = re.search(r'bytes=(\d+)-(\d*)', range_header)
+        if range_match:
+            byte_start = int(range_match.group(1))
+            if range_match.group(2):
+                byte_end = int(range_match.group(2))
+        
+        content_length = byte_end - byte_start + 1
+        
+        def generate():
+            # Use context manager to ensure file descriptor is properly closed
+            f = None
+            try:
+                f = open(file_path, 'rb')
+                f.seek(byte_start)
+                remaining = content_length
+                while remaining:
+                    chunk_size = min(8192, remaining)
+                    chunk = f.read(chunk_size)
+                    if not chunk:
+                        break
+                    remaining -= len(chunk)
+                    yield chunk
+            finally:
+                # Explicitly close file descriptor to prevent leaks
+                if f is not None:
+                    f.close()
+        
+        response = Response(
+            generate(),
+            206,  # Partial Content
+            headers={
+                'Content-Range': f'bytes {byte_start}-{byte_end}/{file_size}',
+                'Accept-Ranges': 'bytes',
+                'Content-Length': str(content_length),
+                'Content-Type': mimetypes.guess_type(file_path)[0] or 'video/mp4'
+            }
+        )
+        return response
+    else:
+        # Full file response
+        return send_file(
+            file_path,
+            mimetype=mimetypes.guess_type(file_path)[0] or 'video/mp4',
+            as_attachment=False
+        )
 
 def get_video_info(file_path):
     """Extract video metadata using ffprobe."""
@@ -109,75 +176,207 @@ def get_category_videos(category_id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@video_bp.route('/list', methods=['GET'])
+def list_videos():
+    """List all available videos from video index or database."""
+    try:
+        # Try to load from video index JSON first
+        video_index_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'video_index.json')
+        
+        if os.path.exists(video_index_path):
+            with open(video_index_path, 'r') as f:
+                index_data = json.load(f)
+                return jsonify({
+                    'videos': index_data.get('videos', []),
+                    'categories': index_data.get('categories', []),
+                    'total': len(index_data.get('videos', []))
+                })
+        
+        # Fallback to database
+        videos = Video.query.all()
+        return jsonify({
+            'videos': [{
+                'id': v.id,
+                'filename': v.filename,
+                'path': v.file_path,
+                'title': v.title or v.filename
+            } for v in videos],
+            'total': len(videos)
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @video_bp.route('/search', methods=['GET'])
 def search_videos():
-    """Search videos across all categories."""
+    """Search videos by filename/path."""
     try:
-        query = request.args.get('q', '')
-        category_id = request.args.get('category_id', type=int)
-        difficulty = request.args.get('difficulty')
-        instructor = request.args.get('instructor')
-        page = request.args.get('page', 1, type=int)
-        per_page = request.args.get('per_page', 20, type=int)
+        query = request.args.get('q', '').lower()
         
-        video_query = Video.query.filter_by(is_available=True)
+        if not query:
+            return jsonify({'videos': [], 'total': 0, 'query': ''})
         
-        if query:
-            video_query = video_query.filter(
-                db.or_(
-                    Video.title.contains(query),
-                    Video.description.contains(query),
-                    Video.instructor.contains(query)
-                )
+        # Try to load from video index JSON first
+        video_index_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'video_index.json')
+        
+        if os.path.exists(video_index_path):
+            with open(video_index_path, 'r') as f:
+                index_data = json.load(f)
+                videos = index_data.get('videos', [])
+                # Filter by searchable text
+                filtered = [v for v in videos if query in v.get('searchable', '').lower() or 
+                           query in v.get('filename', '').lower() or 
+                           query in v.get('path', '').lower()]
+                return jsonify({
+                    'videos': filtered,
+                    'total': len(filtered),
+                    'query': query
+                })
+        
+        # Fallback to database search
+        videos = Video.query.filter(
+            db.or_(
+                Video.filename.contains(query),
+                Video.file_path.contains(query),
+                Video.title.contains(query)
             )
-        
-        if category_id:
-            video_query = video_query.filter_by(category_id=category_id)
-        
-        if difficulty:
-            video_query = video_query.filter_by(difficulty_level=difficulty)
-        
-        if instructor:
-            video_query = video_query.filter_by(instructor=instructor)
-        
-        videos = video_query.order_by(Video.view_count.desc()).paginate(
-            page=page, per_page=per_page, error_out=False
-        )
+        ).all()
         
         return jsonify({
-            'videos': [video.to_dict() for video in videos.items],
-            'pagination': {
-                'page': page,
-                'per_page': per_page,
-                'total': videos.total,
-                'pages': videos.pages,
-                'has_next': videos.has_next,
-                'has_prev': videos.has_prev
-            },
+            'videos': [{
+                'id': v.id,
+                'filename': v.filename,
+                'path': v.file_path,
+                'title': v.title or v.filename
+            } for v in videos],
+            'total': len(videos),
             'query': query
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@video_bp.route('/stream/<path:filename>', methods=['GET'])
+def stream_video_by_path(filename):
+    """Stream video file, transcoding if necessary for browser compatibility."""
+    try:
+        if not VIDEO_ROOT_PATH:
+            return jsonify({'error': 'VIDEO_ROOT_PATH not configured'}), 500
+        
+        # Flask's <path:filename> already URL-decodes, but handle any edge cases
+        # Properly decode URL-encoded characters (handles %2F, %20, %26, etc.)
+        video_path = unquote(filename)
+        
+        # Remove leading ./ if present
+        if video_path.startswith('./'):
+            video_path = video_path[2:]
+        
+        file_path = os.path.join(VIDEO_ROOT_PATH, video_path)
+        
+        # Security check: prevent path traversal attacks
+        # Normalize paths to handle .. and . components
+        abs_video_root = os.path.abspath(os.path.normpath(VIDEO_ROOT_PATH))
+        abs_file_path = os.path.abspath(os.path.normpath(file_path))
+        
+        # Ensure the resolved path is within VIDEO_ROOT_PATH
+        # Use os.path.commonpath to prevent directory traversal
+        try:
+            common_path = os.path.commonpath([abs_video_root, abs_file_path])
+            if common_path != abs_video_root:
+                logger.warning(f"Path traversal attempt detected: {video_path}")
+                return jsonify({'error': 'Invalid video path'}), 403
+        except ValueError:
+            # Paths don't share a common base (shouldn't happen, but be safe)
+            logger.warning(f"Path traversal attempt detected: {video_path}")
+            return jsonify({'error': 'Invalid video path'}), 403
+        
+        if not os.path.exists(file_path):
+            return jsonify({'error': 'Video file not found'}), 404
+        
+        if not is_video_file(file_path):
+            return jsonify({'error': 'File is not a supported video format'}), 400
+        
+        # Check if we need transcoding
+        playable_path = get_playable_path(file_path)
+        
+        if playable_path:
+            # Already playable (H.264 or cached transcode)
+            logger.debug(f"Serving playable video: {playable_path}")
+            return send_file_partial(playable_path)
+        
+        # Need to transcode - create/get job and return job ID
+        cache_path = get_cache_path(file_path)
+        job, should_enqueue = create_or_get_job(file_path, cache_path)
+        
+        if should_enqueue:
+            enqueue_job(job.id)
+        
+        # Return 202 Accepted with job ID for polling
+        return jsonify({
+            'status': 'transcoding',
+            'message': 'Video is being prepared for playback',
+            'job_id': job.id,
+            'poll_url': f'/api/videos/transcode-job/{job.id}'
+        }), 202
+        # Check if cache is being created (temp file exists)
+        tmp_path = cache_path + '.tmp'
+        if os.path.exists(tmp_path):
+            # Verify that the temp file is not stale before assuming transcoding is in progress
+            try:
+                mtime = datetime.fromtimestamp(os.path.getmtime(tmp_path))
+                age = datetime.now() - mtime
+                # If the temp file is older than 1 hour, assume a previous transcoding attempt failed
+                if age.total_seconds() > 3600:
+                    logger.warning(
+                        f"Stale transcoding temp file detected (age={age.total_seconds()}s) for: {file_path}. "
+                        "Removing temp file and restarting transcoding."
+                    )
+                    try:
+                        os.remove(tmp_path)
+                    except OSError as remove_err:
+                        logger.error(f"Failed to remove stale temp file {tmp_path}: {remove_err}")
+                else:
+                    # Transcoding in progress - return 202 Accepted with retry-after
+                    return jsonify({
+                        'error': 'Video is being prepared for playback',
+                        'status': 'transcoding',
+                        'message': 'Please wait and try again in a moment'
+                    }), 202
+            except Exception as tmp_check_err:
+                # If we cannot reliably determine staleness, fall back to existing behavior
+                logger.warning(
+                    f"Error while checking transcoding temp file {tmp_path}: {tmp_check_err}. "
+                    "Assuming transcoding is in progress."
+                )
+                return jsonify({
+                    'error': 'Video is being prepared for playback',
+                    'status': 'transcoding',
+                    'message': 'Please wait and try again in a moment'
+                }), 202
+        
+        # Start transcoding (this will block - consider async for large files)
+        logger.info(f"Starting transcoding for: {file_path}")
+        if transcode_to_h264(file_path, cache_path):
+            logger.info(f"Transcoding complete, serving: {cache_path}")
+            return send_file_partial(cache_path)
+        else:
+            logger.error(f"Transcoding failed for: {file_path}")
+            return jsonify({
+                'error': 'Video transcoding failed',
+                'message': 'Unable to prepare video for playback'
+            }), 500
+    
+    except Exception as e:
+        logger.error(f"Error streaming video: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
 @video_bp.route('/stream/<int:video_id>', methods=['GET'])
 def stream_video(video_id):
-    """Stream video with range support for seeking."""
+    """Stream video by ID with range support for seeking."""
     try:
         video = Video.query.get_or_404(video_id)
-        
-        if not video.is_available:
-            return jsonify({'error': 'Video not available'}), 404
-        
         file_path = os.path.join(VIDEO_ROOT_PATH, video.file_path)
         
         if not os.path.exists(file_path):
-            # Mark video as unavailable
-            video.is_available = False
-            db.session.commit()
             return jsonify({'error': 'Video file not found'}), 404
-        
-        # Increment view count
-        video.increment_view_count()
         
         # Get file info
         file_size = os.path.getsize(file_path)
@@ -230,6 +429,111 @@ def stream_video(video_id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@video_bp.route('/transcode-status/<path:filename>', methods=['GET'])
+def transcode_status(filename):
+    """Check if a video needs transcoding and if cache exists."""
+    try:
+        if not VIDEO_ROOT_PATH:
+            return jsonify({'error': 'VIDEO_ROOT_PATH not configured'}), 500
+        
+        video_path = unquote(filename)
+        if video_path.startswith('./'):
+            video_path = video_path[2:]
+        
+        file_path = os.path.join(VIDEO_ROOT_PATH, video_path)
+        
+        if not os.path.exists(file_path):
+            return jsonify({'error': 'Video file not found'}), 404
+        
+        needs_tc = needs_transcoding(file_path)
+        cache_path = get_cache_path(file_path)
+        cache_exists = os.path.exists(cache_path)
+        
+        # Check if there's an active job for this file
+        job_id = get_job_id(file_path)
+        job_status = get_job_status(job_id)
+        transcoding_in_progress = job_status and job_status['status'] in ['pending', 'processing']
+        
+        return jsonify({
+            'needs_transcoding': needs_tc,
+            'cache_exists': cache_exists,
+            'transcoding_in_progress': transcoding_in_progress,
+            'ready': not needs_tc or cache_exists,
+            'codec': get_video_codec(file_path) if needs_tc else 'h264',
+            'job_id': job_id if transcoding_in_progress else None
+        })
+    except Exception as e:
+        logger.error(f"Error checking transcode status: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@video_bp.route('/transcode-job/<job_id>', methods=['GET'])
+def get_transcode_job_status(job_id):
+    """Get the status of a transcoding job by ID."""
+    try:
+        job_status = get_job_status(job_id)
+        
+        if not job_status:
+            return jsonify({'error': 'Job not found'}), 404
+        
+        return jsonify(job_status)
+    except Exception as e:
+        logger.error(f"Error getting job status: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@video_bp.route('/transcode', methods=['POST'])
+def trigger_transcode():
+    """Trigger transcoding of a video (for pre-caching)."""
+    try:
+        if not VIDEO_ROOT_PATH:
+            return jsonify({'error': 'VIDEO_ROOT_PATH not configured'}), 500
+        
+        data = request.get_json()
+        filename = data.get('filename')
+        
+        if not filename:
+            return jsonify({'error': 'filename required'}), 400
+        
+        video_path = unquote(filename)
+        if video_path.startswith('./'):
+            video_path = video_path[2:]
+        
+        file_path = os.path.join(VIDEO_ROOT_PATH, video_path)
+        
+        if not os.path.exists(file_path):
+            return jsonify({'error': 'Video file not found'}), 404
+        
+        if not needs_transcoding(file_path):
+            return jsonify({
+                'status': 'not_needed',
+                'message': 'Already H.264, no transcoding needed'
+            })
+        
+        cache_path = get_cache_path(file_path)
+        if os.path.exists(cache_path):
+            return jsonify({
+                'status': 'cached',
+                'message': 'Already transcoded',
+                'cache_path': cache_path
+            })
+        
+        # Create/get job and enqueue for async processing
+        job, should_enqueue = create_or_get_job(file_path, cache_path)
+        
+        if should_enqueue:
+            enqueue_job(job.id)
+            logger.info(f"Enqueued transcoding job {job.id} for: {file_path}")
+        
+        return jsonify({
+            'status': job.status,
+            'message': 'Transcoding job created' if should_enqueue else 'Transcoding job already exists',
+            'job_id': job.id,
+            'poll_url': f'/api/videos/transcode-job/{job.id}'
+        }), 202
+    
+    except Exception as e:
+        logger.error(f"Error triggering transcode: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
 @video_bp.route('/<int:video_id>', methods=['GET'])
 def get_video(video_id):
     """Get video details."""
@@ -279,8 +583,9 @@ def map_video_to_exercise(exercise_id):
     try:
         data = request.get_json()
         
-        exercise = Exercise.query.get_or_404(exercise_id)
-        video = Video.query.get_or_404(data['video_id'])
+        # Validate exercise and video exist
+        Exercise.query.get_or_404(exercise_id)
+        Video.query.get_or_404(data['video_id'])
         
         # Check if mapping already exists
         existing = WorkoutVideoMapping.query.filter_by(

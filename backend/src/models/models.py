@@ -76,6 +76,10 @@ class Exercise(db.Model):
     default_duration_seconds = db.Column(db.Integer)
     default_rest_seconds = db.Column(db.Integer, default=60)
     
+    # Video paths - relative path within VIDEO_ROOT_PATH
+    video_path = db.Column(db.String(500), nullable=True)  # Single primary video path
+    video_paths = db.Column(db.JSON, nullable=True)  # Array of paths for exercises with multiple videos
+    
     # Relationships
     video_mappings = db.relationship('WorkoutVideoMapping', backref='exercise', lazy=True)
     template_associations = db.relationship('WorkoutTemplateExercise', backref='exercise', lazy=True, cascade="all, delete-orphan")
@@ -92,7 +96,9 @@ class Exercise(db.Model):
             'is_distance': self.is_distance,
             'default_reps': self.default_reps,
             'default_duration_seconds': self.default_duration_seconds,
-            'default_rest_seconds': self.default_rest_seconds
+            'default_rest_seconds': self.default_rest_seconds,
+            'video_path': self.video_path,
+            'video_paths': self.video_paths if self.video_paths is not None else []
         }
 
 class WorkoutTemplateExercise(db.Model):
@@ -176,6 +182,38 @@ class WorkoutVideoMapping(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     exercise_id = db.Column(db.Integer, db.ForeignKey('exercises.id'), nullable=False)
     video_id = db.Column(db.Integer, db.ForeignKey('videos.id'), nullable=False)
+    
+    # Optional metadata fields
+    mapping_type = db.Column(db.String(50), default='instruction')  # instruction, demonstration, variation, etc.
+    is_primary = db.Column(db.Boolean, default=False)  # Primary video for this exercise
+    sort_order = db.Column(db.Integer, default=0)  # Order for multiple videos per exercise
+    start_time_seconds = db.Column(db.Integer, nullable=True)  # Start time for video segment
+    end_time_seconds = db.Column(db.Integer, nullable=True)  # End time for video segment
+    notes = db.Column(db.Text, nullable=True)  # Additional notes about this mapping
+    
+    def to_dict(self):
+        """Convert mapping to dictionary, including related video info"""
+        video_dict = None
+        if self.video:
+            video_dict = {
+                'id': self.video.id,
+                'title': self.video.title,
+                'file_path': self.video.file_path,
+                'filename': self.video.filename
+            }
+        
+        return {
+            'id': self.id,
+            'exercise_id': self.exercise_id,
+            'video_id': self.video_id,
+            'video': video_dict,
+            'mapping_type': self.mapping_type,
+            'is_primary': self.is_primary,
+            'sort_order': self.sort_order,
+            'start_time_seconds': self.start_time_seconds,
+            'end_time_seconds': self.end_time_seconds,
+            'notes': self.notes
+        }
 
 class ProgressEntry(db.Model):
     __tablename__ = 'progress_entries'
@@ -415,4 +453,30 @@ class DiaryEntry(db.Model):
             'date': self.date.isoformat() if self.date else None,
             'type': self.type,
             'content': json.loads(self.content_json) if self.content_json else {}
+        }
+
+class TranscodeJob(db.Model):
+    """Track video transcoding jobs"""
+    __tablename__ = 'transcode_jobs'
+    id = db.Column(db.String(64), primary_key=True)  # SHA-256 hash (first 32 chars) of input file path
+    input_path = db.Column(db.String(512), nullable=False)
+    output_path = db.Column(db.String(512), nullable=False)
+    status = db.Column(db.String(20), nullable=False, default='pending')  # pending, processing, complete, failed
+    progress = db.Column(db.Integer, default=0)  # 0-100
+    error_message = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    started_at = db.Column(db.DateTime)
+    completed_at = db.Column(db.DateTime)
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'input_path': self.input_path,
+            'output_path': self.output_path,
+            'status': self.status,
+            'progress': self.progress,
+            'error_message': self.error_message,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'started_at': self.started_at.isoformat() if self.started_at else None,
+            'completed_at': self.completed_at.isoformat() if self.completed_at else None
         }

@@ -22,9 +22,81 @@ const VideoPlayer = ({
   const [playbackRate, setPlaybackRate] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [transcodingStatus, setTranscodingStatus] = useState(null); // 'checking', 'transcoding', 'ready', null
+  const [transcodingMessage, setTranscodingMessage] = useState('');
 
   // Video URL construction
-  const videoUrl = video ? `http://localhost:5180/api/videos/stream/${video.id}` : null;
+  // Support multiple formats:
+  // 1. video.streaming_url (direct URL)
+  // 2. video.video_path (relative path - encode and use stream endpoint)
+  // 3. video.id (legacy - use stream endpoint with ID)
+  const getVideoUrl = () => {
+    if (!video) return null
+    
+    if (video.streaming_url) {
+      return video.streaming_url
+    }
+    
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5180';
+    
+    if (video.video_path) {
+      return `${apiUrl}/api/videos/stream/${encodeURIComponent(video.video_path)}`;
+    }
+    
+    if (video.id) {
+      return `${apiUrl}/api/videos/stream/${video.id}`;
+    }
+    
+    return null;
+  };
+  
+  const videoUrl = getVideoUrl();
+
+  // Check transcoding status when video URL changes
+  useEffect(() => {
+    if (!videoUrl) {
+      setTranscodingStatus(null);
+      setTranscodingMessage('');
+      return;
+    }
+    
+    // Extract video path from URL to check transcoding status
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5180';
+    const streamPrefix = `${apiUrl}/api/videos/stream/`
+    
+    if (videoUrl.startsWith(streamPrefix)) {
+      const urlPath = videoUrl.replace(streamPrefix, '')
+      
+      setTranscodingStatus('checking')
+      setTranscodingMessage('Checking video format...')
+      
+      // Check transcoding status
+      fetch(`${apiUrl}/api/videos/transcode-status/${urlPath}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.needs_transcoding && !data.cache_exists) {
+            if (data.transcoding_in_progress) {
+              setTranscodingStatus('transcoding')
+              setTranscodingMessage('Preparing video for playback... (this may take a minute)')
+            } else {
+              setTranscodingStatus('transcoding')
+              setTranscodingMessage('Preparing video for playback... (first time may take a minute)')
+            }
+          } else {
+            setTranscodingStatus('ready')
+            setTranscodingMessage('')
+          }
+        })
+        .catch(err => {
+          console.error('Failed to check transcode status:', err)
+          setTranscodingStatus(null)
+          setTranscodingMessage('')
+        })
+    } else {
+      setTranscodingStatus(null)
+      setTranscodingMessage('')
+    }
+  }, [videoUrl]);
 
   useEffect(() => {
     if (autoPlay && videoRef.current) {
@@ -178,21 +250,32 @@ const VideoPlayer = ({
   return (
     <div className={`relative bg-black rounded-lg overflow-hidden ${className}`}>
       {/* Video Element */}
-      <video
-        ref={videoRef}
-        src={videoUrl}
-        className="w-full h-full object-contain"
-        onPlay={() => setIsPlaying(true)}
-        onPause={() => setIsPlaying(false)}
-        preload="metadata"
-      />
+      {videoUrl ? (
+        <video
+          ref={videoRef}
+          src={videoUrl}
+          className="w-full h-full object-contain"
+          onPlay={() => setIsPlaying(true)}
+          onPause={() => setIsPlaying(false)}
+          preload="metadata"
+        />
+      ) : (
+        <div className="w-full h-full flex items-center justify-center bg-gray-900">
+          <p className="text-gray-400">No video source available</p>
+        </div>
+      )}
 
       {/* Loading Overlay */}
-      {isLoading && (
+      {(isLoading || transcodingStatus === 'transcoding') && (
         <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
           <div className="text-white text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-2"></div>
-            <p>Loading video...</p>
+            <p>{transcodingMessage || 'Loading video...'}</p>
+            {transcodingStatus === 'transcoding' && (
+              <p className="text-sm text-gray-300 mt-2">
+                This only happens once - future plays will be instant!
+              </p>
+            )}
           </div>
         </div>
       )}
