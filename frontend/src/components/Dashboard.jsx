@@ -40,7 +40,6 @@ export default function Dashboard({ user }) {
   useEffect(() => {
     if (!user?.id) return
     loadDashboardData()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id])
   useEffect(() => {
     setTemplatesLoading(true)

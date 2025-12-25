@@ -16,7 +16,6 @@ export default function SupplementTracker({ user }) {
     useEffect(() => {
         if (!user?.id) return
         loadData()
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [user?.id])
 
     const loadData = async () => {

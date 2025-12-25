@@ -34,7 +34,6 @@ export default function DailyMetrics({ user }) {
     useEffect(() => {
         if (!user?.id) return
         loadMetrics()
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [user?.id])
 
     const loadMetrics = async () => {
