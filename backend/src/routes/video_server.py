@@ -34,6 +34,10 @@ VIDEO_ROOT_PATH = os.environ.get('VIDEO_ROOT_PATH', '/path/to/video/library')
 ALLOWED_NETWORKS = ['192.168.0.0/16', '10.0.0.0/8', '172.16.0.0/12', '127.0.0.1/32']
 SUPPORTED_FORMATS = ['.mp4', '.avi', '.mov', '.mkv', '.wmv', '.flv', '.webm']
 
+# Input validation constants
+MAX_PATH_LENGTH = 4096  # Typical filesystem limit
+ASCII_CONTROL_THRESHOLD = 32  # ASCII control characters are 0-31
+
 def is_video_file(filename):
     """Check if file is a supported video format."""
     return any(filename.lower().endswith(ext) for ext in SUPPORTED_FORMATS)
@@ -260,14 +264,14 @@ def stream_video_by_path(filename):
             return jsonify({'error': 'Invalid filename'}), 400
         
         # Input validation: Check for extremely long paths (typical filesystem limit is 4096)
-        if len(filename) > 4096:
+        if len(filename) > MAX_PATH_LENGTH:
             logger.warning(f"Rejected excessively long filename (length={len(filename)})")
             return jsonify({'error': 'Filename too long'}), 400
         
         # Input validation: Check for control characters (ASCII 0-31 except tab, newline, carriage return)
-        if any(ord(c) < 32 and c not in '\t\n\r' for c in filename):
+        if any(ord(c) < ASCII_CONTROL_THRESHOLD and c not in '\t\n\r' for c in filename):
             logger.warning(f"Rejected filename with control characters: {repr(filename)}")
-            return jsonify({'error': 'Invalid filename'}), 400
+            return jsonify({'error': 'Filename contains invalid control characters'}), 400
         
         # Flask's <path:filename> already URL-decodes, but handle any edge cases
         # Properly decode URL-encoded characters (handles %2F, %20, %26, etc.)
