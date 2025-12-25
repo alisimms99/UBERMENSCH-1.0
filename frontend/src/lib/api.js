@@ -1,8 +1,9 @@
 // API service (single-user app: Ali)
+import { API_URL } from '../config'
 
 class ApiService {
   constructor() {
-    this.baseURL = 'http://localhost:5180/api'
+    this.baseURL = `${API_URL}/api`
     this.mockUser = null
     this.mockData = {
       exercises: [],
