@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Play, Clock, Target, Users, Waves, ArrowRight, CheckCircle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom'
+import { Play, Clock, Target, Users, Waves, ArrowRight } from 'lucide-react';
 import { TemplateExerciseImage } from './ExerciseImage';
 
 const WorkoutTemplates = ({ user, onStartWorkout, onBack }) => {
+  const navigate = useNavigate()
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedTemplate, setSelectedTemplate] = useState(null);
@@ -109,15 +111,15 @@ const WorkoutTemplates = ({ user, onStartWorkout, onBack }) => {
     
     // Calculate based on user's current targets
     if (exercise.exercise.name === 'Pushups') {
-      return { reps: Math.max(1, Math.round((user?.current_pushups || 1) * intensity)) };
+      return { reps: Math.max(1, Math.round((user?.current_pushup_target || 1) * intensity)) };
     }
     
     if (exercise.exercise.name === 'Situps') {
-      return { reps: Math.max(1, Math.round((user?.current_situps || 1) * intensity)) };
+      return { reps: Math.max(1, Math.round((user?.current_situp_target || 1) * intensity)) };
     }
     
     if (exercise.exercise.name === 'Plank') {
-      return { duration: Math.max(10, Math.round((user?.current_plank_duration || 10) * intensity)) };
+      return { duration: Math.max(10, Math.round((user?.current_plank_target || 10) * intensity)) };
     }
     
     return { reps: exercise.target_reps || 10 };
@@ -149,6 +151,17 @@ const WorkoutTemplates = ({ user, onStartWorkout, onBack }) => {
     }
     return `${seconds}s`;
   };
+
+  const handleBack = () => {
+    if (typeof onBack === 'function') return onBack()
+    navigate('/dashboard')
+  }
+
+  const handleStartWorkout = (template) => {
+    if (typeof onStartWorkout === 'function') return onStartWorkout(template)
+    const templateId = typeof template === 'object' ? template?.id : template
+    if (templateId) navigate(`/workout/template/${templateId}`)
+  }
 
   if (loading) {
     return (
@@ -239,7 +252,7 @@ const WorkoutTemplates = ({ user, onStartWorkout, onBack }) => {
 
           <div className="flex gap-3">
             <button
-              onClick={() => onStartWorkout(selectedTemplate)}
+              onClick={() => handleStartWorkout(selectedTemplate)}
               className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors font-medium"
             >
               <Play className="w-4 h-4" />
@@ -262,7 +275,7 @@ const WorkoutTemplates = ({ user, onStartWorkout, onBack }) => {
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-2xl font-bold text-gray-800">Workout Templates</h2>
         <button
-          onClick={onBack}
+          onClick={handleBack}
           className="text-gray-500 hover:text-gray-700"
         >
           ← Back to Dashboard
@@ -311,7 +324,7 @@ const WorkoutTemplates = ({ user, onStartWorkout, onBack }) => {
                 <ArrowRight className="w-4 h-4" />
               </button>
               <button
-                onClick={() => onStartWorkout(template)}
+                onClick={() => handleStartWorkout(template)}
                 className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors font-medium"
               >
                 <Play className="w-4 h-4" />

@@ -246,21 +246,17 @@ export default function Dashboard({ user }) {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.6 }}
-          className="space-y-6"
         >
           <DailyMetrics user={user} />
-          <DiaryEntry user={user} />
         </motion.div>
       </div>
 
-      {/* Workout Section (Existing but moved down) */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Today's Workout */}
+      {/* Row 3: Today's Workout + Diary (separate containers; no overlap) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.7 }}
-          className="lg:col-span-2"
         >
           <Card>
             <CardHeader>
@@ -268,9 +264,7 @@ export default function Dashboard({ user }) {
                 <Calendar className="w-5 h-5" />
                 <span>Today's Workout</span>
               </CardTitle>
-              <CardDescription>
-                Make sure to align with your Qigong practice.
-              </CardDescription>
+              <CardDescription>Make sure to align with your Qigong practice.</CardDescription>
             </CardHeader>
             <CardContent>
               {todayWorkout ? (
@@ -281,10 +275,16 @@ export default function Dashboard({ user }) {
                         {todayWorkout.exercises?.length || 0} exercises planned
                       </h3>
                       <p className="text-sm text-muted-foreground">
-                        Status: <Badge variant={
-                          todayWorkout.status === 'completed' ? 'default' :
-                            todayWorkout.status === 'in_progress' ? 'secondary' : 'outline'
-                        }>
+                        Status:{' '}
+                        <Badge
+                          variant={
+                            todayWorkout.status === 'completed'
+                              ? 'default'
+                              : todayWorkout.status === 'in_progress'
+                                ? 'secondary'
+                                : 'outline'
+                          }
+                        >
                           {todayWorkout.status.replace('_', ' ')}
                         </Badge>
                       </p>
@@ -309,76 +309,95 @@ export default function Dashboard({ user }) {
           </Card>
         </motion.div>
 
-        {/* Workout Templates List - Always Visible */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.8 }}
-          className="lg:col-span-3"
+          transition={{ delay: 0.75 }}
         >
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Activity className="w-5 h-5" />
-                <span>Workout Templates</span>
-              </CardTitle>
-              <CardDescription>Select a routine to start immediately</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {templatesLoading ? (
-                <div className="text-center py-4">Loading templates...</div>
-              ) : templatesError ? (
-                <div className="text-red-500">{templatesError}</div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {templates.map(template => (
-                    <div key={template.id} className="flex items-start justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors cursor-pointer group" onClick={() => handleStartWorkout(template.id)}>
-                      <div>
-                        <h3 className="font-semibold text-foreground text-lg group-hover:text-primary transition-colors">{template.name}</h3>
-                        <div className="flex gap-2 mt-2">
-                          <Badge variant="secondary" className="text-xs">{template.difficulty_level || 'General'}</Badge>
-                          <Badge variant="outline" className="text-xs">{template.estimated_duration_min}-{template.estimated_duration_max} min</Badge>
-                        </div>
-                        <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
-                          {template.description}
-                        </p>
-                      </div>
-                      <Button size="icon" variant="ghost" className="mt-1">
-                        <Play className="w-6 h-6 text-primary" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <DiaryEntry user={user} />
         </motion.div>
+      </div>
 
-        {/* Quick Actions (Condensed) */}
-        <div className="space-y-4">
-          <Link to="/progress">
-            <Button variant="outline" className="w-full h-20 flex flex-col space-y-2">
-              <TrendingUp className="w-6 h-6" />
-              <span>Full Analytics</span>
-            </Button>
-          </Link>
-          <Button
-            variant="outline"
-            className="w-full h-20 flex flex-col space-y-2"
-            onClick={() => {
-              const steps = prompt('How many steps did you walk?')
-              if (steps) {
-                apiService.createProgressEntry(user.id, {
-                  daily_steps: parseInt(steps),
-                  date: new Date().toISOString().split('T')[0]
-                }).then(() => loadDashboardData())
-              }
-            }}
-          >
-            <MapPin className="w-6 h-6" />
-            <span>Log Walking</span>
+      {/* Row 4: Workout Templates (full width, its own row) */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.8 }}
+      >
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Activity className="w-5 h-5" />
+              <span>Workout Templates</span>
+            </CardTitle>
+            <CardDescription>Select a routine to start immediately</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {templatesLoading ? (
+              <div className="text-center py-4">Loading templates...</div>
+            ) : templatesError ? (
+              <div className="text-red-500">{templatesError}</div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {templates.map(template => (
+                  <div
+                    key={template.id}
+                    className="flex items-start justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors cursor-pointer group"
+                    onClick={() => handleStartWorkout(template.id)}
+                  >
+                    <div>
+                      <h3 className="font-semibold text-foreground text-lg group-hover:text-primary transition-colors">
+                        {template.name}
+                      </h3>
+                      <div className="flex gap-2 mt-2">
+                        <Badge variant="secondary" className="text-xs">
+                          {template.difficulty_level || 'General'}
+                        </Badge>
+                        <Badge variant="outline" className="text-xs">
+                          {template.estimated_duration_min}-{template.estimated_duration_max} min
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
+                        {template.description}
+                      </p>
+                    </div>
+                    <Button size="icon" variant="ghost" className="mt-1">
+                      <Play className="w-6 h-6 text-primary" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* Bottom actions */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Link to="/progress">
+          <Button variant="outline" className="w-full h-20 flex flex-col space-y-2">
+            <TrendingUp className="w-6 h-6" />
+            <span>Full Analytics</span>
           </Button>
-        </div>
+        </Link>
+        <Button
+          variant="outline"
+          className="w-full h-20 flex flex-col space-y-2"
+          onClick={() => {
+            const steps = prompt('How many steps did you walk?')
+            if (steps) {
+              apiService
+                .createProgressEntry(user.id, {
+                  daily_steps: parseInt(steps),
+                  date: new Date().toISOString().split('T')[0],
+                })
+                .then(() => loadDashboardData())
+            }
+          }}
+        >
+          <MapPin className="w-6 h-6" />
+          <span>Log Walking</span>
+        </Button>
       </div>
     </div>
   )
