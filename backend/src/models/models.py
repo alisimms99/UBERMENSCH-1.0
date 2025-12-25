@@ -426,7 +426,7 @@ class DiaryEntry(db.Model):
 class TranscodeJob(db.Model):
     """Track video transcoding jobs"""
     __tablename__ = 'transcode_jobs'
-    id = db.Column(db.String(64), primary_key=True)  # MD5 hash of input file path
+    id = db.Column(db.String(64), primary_key=True)  # SHA-256 hash (first 32 chars) of input file path
     input_path = db.Column(db.String(512), nullable=False)
     output_path = db.Column(db.String(512), nullable=False)
     status = db.Column(db.String(20), nullable=False, default='pending')  # pending, processing, complete, failed

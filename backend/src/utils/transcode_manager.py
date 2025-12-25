@@ -1,10 +1,16 @@
 """
 Background task manager for video transcoding jobs
 Uses threading to process transcode jobs without blocking HTTP requests
+
+Note: This implementation uses in-memory queues which work for single-process
+deployments (e.g., Flask development server, single Gunicorn worker).
+For multi-process production deployments, consider using a proper task queue
+like Celery, Redis Queue, or similar distributed task systems.
 """
 import threading
 import logging
 import hashlib
+import time
 from datetime import datetime
 from flask import current_app
 
@@ -15,19 +21,21 @@ _job_queue = []
 _queue_lock = threading.Lock()
 _worker_thread = None
 _worker_running = False
+_shutdown_event = threading.Event()
 
 def get_job_id(file_path):
-    """Generate consistent job ID from file path"""
-    return hashlib.md5(file_path.encode()).hexdigest()
+    """Generate consistent job ID from file path using SHA-256"""
+    return hashlib.sha256(file_path.encode()).hexdigest()[:32]  # Use first 32 chars for readability
 
 def start_worker(app):
     """Start the background worker thread"""
-    global _worker_thread, _worker_running
+    global _worker_thread, _worker_running, _shutdown_event
     
     if _worker_thread is not None and _worker_thread.is_alive():
         logger.info("Worker thread already running")
         return
     
+    _shutdown_event.clear()
     _worker_running = True
     _worker_thread = threading.Thread(
         target=_worker_loop,
@@ -37,6 +45,21 @@ def start_worker(app):
     )
     _worker_thread.start()
     logger.info("Started transcode worker thread")
+
+def stop_worker():
+    """Stop the background worker thread gracefully"""
+    global _worker_running, _shutdown_event
+    
+    logger.info("Stopping transcode worker thread...")
+    _worker_running = False
+    _shutdown_event.set()
+    
+    if _worker_thread is not None and _worker_thread.is_alive():
+        _worker_thread.join(timeout=5.0)
+        if _worker_thread.is_alive():
+            logger.warning("Worker thread did not stop gracefully")
+        else:
+            logger.info("Worker thread stopped successfully")
 
 def _worker_loop(app):
     """Main worker loop that processes transcode jobs"""
@@ -54,8 +77,8 @@ def _worker_loop(app):
                 job_id = _job_queue.pop(0)
         
         if job_id is None:
-            # No jobs, sleep briefly
-            threading.Event().wait(1.0)
+            # No jobs, sleep briefly or wait for shutdown signal
+            _shutdown_event.wait(timeout=1.0)
             continue
         
         # Process the job with app context
@@ -108,8 +131,11 @@ def _worker_loop(app):
 
 def enqueue_job(job_id):
     """Add a job to the processing queue"""
+    # Using a set for O(1) duplicate checking alongside the list
     with _queue_lock:
-        if job_id not in _job_queue:
+        # Convert to set for faster lookup, then back to list
+        queue_set = set(_job_queue)
+        if job_id not in queue_set:
             _job_queue.append(job_id)
             logger.info(f"Enqueued job {job_id}, queue size: {len(_job_queue)}")
             return True
