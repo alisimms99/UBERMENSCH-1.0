@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main, '2025-12-25-2gzy-*']
+    branches: [main]
   pull_request:
     branches: [main]
 
@@ -27,7 +27,7 @@ jobs:
         run: |
           # Exclude offline.js which legitimately uses console.log for offline debugging
           # Search for console.log but exclude node_modules and offline.js
-          found=$(grep -r "console\.log" src/ --exclude-dir=node_modules | grep -v "offline.js" || true)
+          found=$(grep -r "console\.log" src/ --exclude-dir=node_modules --exclude=offline.js || true)
           if [ -n "$found" ]; then
             echo "❌ Found console.log statements. Please remove them before committing."
             echo "$found"
