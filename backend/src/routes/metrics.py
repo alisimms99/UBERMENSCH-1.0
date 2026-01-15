@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
-from ..models.models import db, DailyMetrics
-from datetime import datetime
+from ..models.models import db, DailyMetrics, VideoSession
+from datetime import datetime, timedelta
 import json
 
 metrics_bp = Blueprint('metrics', __name__)
@@ -11,11 +11,28 @@ def get_daily_metrics(date_str):
         target_date = datetime.strptime(date_str, '%Y-%m-%d').date()
     except ValueError:
         return jsonify({'error': 'Invalid date format. Use YYYY-MM-DD'}), 400
-    
+
     user_id = request.args.get('user_id', 1, type=int)
-    
+
     metrics = DailyMetrics.query.filter_by(user_id=user_id, date=target_date).first()
-    
+
+    # Query video sessions for this date
+    day_start = datetime.combine(target_date, datetime.min.time())
+    day_end = day_start + timedelta(days=1)
+
+    video_sessions = VideoSession.query.filter(
+        VideoSession.user_id == user_id,
+        VideoSession.started_at >= day_start,
+        VideoSession.started_at < day_end
+    ).all()
+
+    completed_sessions = [s for s in video_sessions if s.completed]
+    video_summary = {
+        'count': len(completed_sessions),
+        'total_minutes': sum(s.duration_seconds for s in completed_sessions) // 60,
+        'categories': list(set(s.category for s in completed_sessions if s.category))
+    }
+
     if not metrics:
         # Return empty/default metrics object instead of 404
         # This allows frontend to display empty forms for new days
@@ -47,10 +64,13 @@ def get_daily_metrics(date_str):
                 'steps': None,
                 'bowel_movements': None,
                 'supplements_taken': False
-            }
+            },
+            'video_sessions': video_summary
         })
-        
-    return jsonify(metrics.to_dict())
+
+    result = metrics.to_dict()
+    result['video_sessions'] = video_summary
+    return jsonify(result)
 
 @metrics_bp.route('/morning', methods=['POST'])
 def save_morning_checkin():
