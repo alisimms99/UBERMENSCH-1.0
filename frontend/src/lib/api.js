@@ -358,6 +358,30 @@ class ApiService {
       body: data
     })
   }
+
+  // --- Video Favorites ---
+
+  async getFavorites(userId = 1) {
+    return this.request(`/library/favorites?user_id=${userId}`)
+  }
+
+  async addFavorite(videoPath, videoName, category, userId = 1) {
+    return this.request('/library/favorites', {
+      method: 'POST',
+      body: {
+        user_id: userId,
+        video_path: videoPath,
+        video_name: videoName,
+        category: category
+      }
+    })
+  }
+
+  async removeFavorite(favoriteId) {
+    return this.request(`/library/favorites/${favoriteId}`, {
+      method: 'DELETE'
+    })
+  }
 }
 
 export const apiService = new ApiService()
