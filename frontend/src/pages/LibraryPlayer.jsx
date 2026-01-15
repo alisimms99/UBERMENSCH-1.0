@@ -15,6 +15,8 @@ export default function LibraryPlayer() {
   const [session, setSession] = useState(null);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isFavorited, setIsFavorited] = useState(false);
+  const [favoriteId, setFavoriteId] = useState(null);
   const timerRef = useRef(null);
 
   const startTimer = useCallback(() => {
@@ -51,9 +53,43 @@ export default function LibraryPlayer() {
     };
   }, [isWorkout, startSession]);
 
+  useEffect(() => {
+    const checkFavoriteStatus = async () => {
+      try {
+        const favorites = await apiService.getFavorites();
+        const match = favorites.find(f => f.video_path === videoPath);
+        if (match) {
+          setIsFavorited(true);
+          setFavoriteId(match.id);
+        }
+      } catch (error) {
+        console.error('Failed to check favorite status:', error);
+      }
+    };
+    if (videoPath) {
+      checkFavoriteStatus();
+    }
+  }, [videoPath]);
+
   const pauseTimer = () => {
     setIsPlaying(false);
     if (timerRef.current) clearInterval(timerRef.current);
+  };
+
+  const toggleFavorite = async () => {
+    try {
+      if (isFavorited) {
+        await apiService.removeFavorite(favoriteId);
+        setIsFavorited(false);
+        setFavoriteId(null);
+      } else {
+        const result = await apiService.addFavorite(videoPath, videoName, category);
+        setIsFavorited(true);
+        setFavoriteId(result.id);
+      }
+    } catch (error) {
+      console.error('Failed to toggle favorite:', error);
+    }
   };
 
   const completeSession = async () => {
@@ -101,8 +137,11 @@ export default function LibraryPlayer() {
             ← Back
           </button>
           <div className="flex items-center gap-4">
-            <button className="text-white hover:text-yellow-400">
-              ⭐ Favorite
+            <button
+              onClick={toggleFavorite}
+              className={`text-white hover:text-yellow-400 ${isFavorited ? 'text-yellow-400' : ''}`}
+            >
+              {isFavorited ? '★' : '☆'} Favorite
             </button>
             <button className="text-white hover:text-blue-400 flex items-center gap-1">
               📺 Cast to TV
