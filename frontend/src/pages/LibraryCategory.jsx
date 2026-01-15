@@ -7,6 +7,7 @@ export default function LibraryCategory() {
   const navigate = useNavigate();
   const [videos, setVideos] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [favorites, setFavorites] = useState(new Map()); // video_path -> favorite_id
 
   const loadVideos = useCallback(async () => {
     try {
@@ -22,6 +23,40 @@ export default function LibraryCategory() {
   useEffect(() => {
     loadVideos();
   }, [loadVideos]);
+
+  useEffect(() => {
+    const loadFavorites = async () => {
+      try {
+        const favs = await apiService.getFavorites();
+        const favMap = new Map(favs.map(f => [f.video_path, f.id]));
+        setFavorites(favMap);
+      } catch (error) {
+        console.error('Failed to load favorites:', error);
+      }
+    };
+    loadFavorites();
+  }, []);
+
+  const toggleFavorite = async (video) => {
+    const videoPath = video.path;
+    const videoName = video.name || video.filename;
+
+    try {
+      if (favorites.has(videoPath)) {
+        await apiService.removeFavorite(favorites.get(videoPath));
+        setFavorites(prev => {
+          const next = new Map(prev);
+          next.delete(videoPath);
+          return next;
+        });
+      } else {
+        const result = await apiService.addFavorite(videoPath, videoName, categoryName);
+        setFavorites(prev => new Map(prev).set(videoPath, result.id));
+      }
+    } catch (error) {
+      console.error('Failed to toggle favorite:', error);
+    }
+  };
 
   const formatDuration = (seconds) => {
     if (!seconds) return '';
@@ -69,6 +104,13 @@ export default function LibraryCategory() {
 
             {/* Actions */}
             <div className="flex items-center gap-2">
+              <button
+                onClick={() => toggleFavorite(video)}
+                className={`p-2 rounded-lg hover:bg-gray-100 text-xl ${favorites.has(video.path) ? 'text-yellow-500' : 'text-gray-400'}`}
+                title={favorites.has(video.path) ? 'Remove from favorites' : 'Add to favorites'}
+              >
+                {favorites.has(video.path) ? '★' : '☆'}
+              </button>
               <button
                 onClick={() => navigate(`/library/play?path=${encodeURIComponent(video.path)}&name=${encodeURIComponent(video.name || video.filename)}&category=${encodeURIComponent(categoryName)}`)}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
