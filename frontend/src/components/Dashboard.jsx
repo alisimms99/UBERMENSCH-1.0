@@ -12,7 +12,8 @@ import {
   MapPin,
   Clock,
   Plus,
-  ChevronRight
+  ChevronRight,
+  Video
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -36,6 +37,7 @@ export default function Dashboard({ user }) {
   const [templates, setTemplates] = useState([])
   const [templatesLoading, setTemplatesLoading] = useState(true)
   const [templatesError, setTemplatesError] = useState(null)
+  const [videoSessions, setVideoSessions] = useState({ count: 0, total_minutes: 0, categories: [] })
 
   useEffect(() => {
     if (!user?.id) return
@@ -72,6 +74,17 @@ export default function Dashboard({ user }) {
       // Load recent achievements
       const achievements = await apiService.getUserAchievements(user.id)
       setRecentAchievements(achievements.slice(-3)) // Last 3 achievements
+
+      // Load today's video sessions from daily metrics
+      try {
+        const today = new Date().toISOString().split('T')[0]
+        const dailyMetrics = await apiService.getDailyMetrics(today, user.id)
+        if (dailyMetrics?.video_sessions) {
+          setVideoSessions(dailyMetrics.video_sessions)
+        }
+      } catch (error) {
+        console.error('Failed to load video sessions:', error)
+      }
 
     } catch (error) {
       console.error('Failed to load dashboard data:', error)
@@ -143,7 +156,7 @@ export default function Dashboard({ user }) {
       </motion.div>
 
       {/* Quick Stats Row */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         {/* ... (Existing Stats Cards) ... */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -226,6 +239,30 @@ export default function Dashboard({ user }) {
                   <p className="text-sm text-muted-foreground">Achievements</p>
                   <p className="text-2xl font-bold text-foreground">
                     {recentAchievements.length}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+        >
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center space-x-4">
+                <div className="w-12 h-12 bg-red-500/10 rounded-lg flex items-center justify-center">
+                  <Video className="w-6 h-6 text-red-500" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Video Workouts</p>
+                  <p className="text-2xl font-bold text-foreground">
+                    {videoSessions.total_minutes > 0
+                      ? `${videoSessions.total_minutes} min`
+                      : `${videoSessions.count} sessions`}
                   </p>
                 </div>
               </div>

@@ -30,6 +30,16 @@ export default function Library() {
     }
   };
 
+  const removeFavorite = async (e, favoriteId) => {
+    e.stopPropagation(); // Prevent navigation to video
+    try {
+      await apiService.removeFavorite(favoriteId);
+      setFavorites(prev => prev.filter(f => f.id !== favoriteId));
+    } catch (error) {
+      console.error('Failed to remove favorite:', error);
+    }
+  };
+
   if (loading) {
     return <div className="p-8 text-center">Loading library...</div>;
   }
@@ -89,11 +99,18 @@ export default function Library() {
             {favorites.map((fav) => (
               <div
                 key={fav.id}
-                className="flex-shrink-0 w-48 cursor-pointer hover:opacity-80"
-                onClick={() => navigate(`/library/play?path=${encodeURIComponent(fav.video_path)}`)}
+                className="flex-shrink-0 w-48 cursor-pointer hover:opacity-80 relative group"
+                onClick={() => navigate(`/library/play?path=${encodeURIComponent(fav.video_path)}&name=${encodeURIComponent(fav.video_name)}&category=${encodeURIComponent(fav.category)}`)}
               >
-                <div className="bg-gray-800 h-28 rounded-lg flex items-center justify-center text-white text-4xl">
+                <div className="bg-gray-800 h-28 rounded-lg flex items-center justify-center text-white text-4xl relative">
                   ▶
+                  <button
+                    onClick={(e) => removeFavorite(e, fav.id)}
+                    className="absolute top-1 right-1 w-6 h-6 bg-black/50 hover:bg-red-600 rounded-full text-white text-sm opacity-0 group-hover:opacity-100 transition-opacity"
+                    title="Remove from favorites"
+                  >
+                    ✕
+                  </button>
                 </div>
                 <p className="mt-2 text-sm font-medium truncate">{fav.video_name}</p>
                 <p className="text-xs text-gray-500">{fav.category}</p>
