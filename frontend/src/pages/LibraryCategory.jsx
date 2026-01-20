@@ -64,6 +64,19 @@ export default function LibraryCategory() {
     return `${mins} min`;
   };
 
+  // Group videos by subcategory
+  const groupedVideos = videos.reduce((acc, video) => {
+    const subcategory = video.subcategory || 'Other';
+    if (!acc[subcategory]) {
+      acc[subcategory] = [];
+    }
+    acc[subcategory].push(video);
+    return acc;
+  }, {});
+
+  // Sort subcategories alphabetically
+  const sortedSubcategories = Object.keys(groupedVideos).sort();
+
   if (loading) {
     return <div className="p-8 text-center">Loading videos...</div>;
   }
@@ -81,48 +94,61 @@ export default function LibraryCategory() {
       <h1 className="text-2xl font-bold mb-6">{decodeURIComponent(categoryName)}</h1>
       <p className="text-gray-600 mb-6">{videos.length} videos</p>
 
-      {/* Video List */}
-      <div className="space-y-4">
-        {videos.map((video, index) => (
-          <div
-            key={index}
-            className="bg-white border rounded-lg p-4 flex gap-4 hover:shadow-md transition-shadow"
-          >
-            {/* Thumbnail placeholder */}
-            <div className="w-32 h-20 bg-gray-800 rounded flex-shrink-0 flex items-center justify-center text-white text-2xl">
-              ▶
-            </div>
-            
-            {/* Info */}
-            <div className="flex-1 min-w-0">
-              <h3 className="font-medium truncate">{video.name || video.filename}</h3>
-              <p className="text-sm text-gray-500">
-                {formatDuration(video.duration)} 
-                {video.codec && ` • ${video.codec}`}
-              </p>
+      {/* Video List with Subcategory Headers */}
+      <div className="space-y-6">
+        {sortedSubcategories.map((subcategory) => (
+          <div key={subcategory}>
+            {/* Subcategory Header */}
+            <div className="mb-3 pb-2 border-b-2 border-gray-200">
+              <h2 className="text-lg font-semibold text-gray-700">{subcategory}</h2>
+              <p className="text-sm text-gray-500">{groupedVideos[subcategory].length} videos</p>
             </div>
 
-            {/* Actions */}
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => toggleFavorite(video)}
-                className={`p-2 rounded-lg hover:bg-gray-100 text-xl ${favorites.has(video.path) ? 'text-yellow-500' : 'text-gray-400'}`}
-                title={favorites.has(video.path) ? 'Remove from favorites' : 'Add to favorites'}
-              >
-                {favorites.has(video.path) ? '★' : '☆'}
-              </button>
-              <button
-                onClick={() => navigate(`/library/play?path=${encodeURIComponent(video.path)}&name=${encodeURIComponent(video.name || video.filename)}&category=${encodeURIComponent(categoryName)}`)}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-              >
-                ▶ Play
-              </button>
-              <button
-                onClick={() => navigate(`/library/play?path=${encodeURIComponent(video.path)}&name=${encodeURIComponent(video.name || video.filename)}&category=${encodeURIComponent(categoryName)}&workout=true`)}
-                className="px-4 py-2 border rounded-lg hover:bg-gray-50"
-              >
-                📋 Start Workout
-              </button>
+            {/* Videos in this subcategory */}
+            <div className="space-y-4">
+              {groupedVideos[subcategory].map((video, index) => (
+                <div
+                  key={index}
+                  className="bg-white border rounded-lg p-4 flex gap-4 hover:shadow-md transition-shadow"
+                >
+                  {/* Thumbnail placeholder */}
+                  <div className="w-32 h-20 bg-gray-800 rounded flex-shrink-0 flex items-center justify-center text-white text-2xl">
+                    ▶
+                  </div>
+                  
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-medium truncate">{video.name || video.filename}</h3>
+                    <p className="text-sm text-gray-500">
+                      {formatDuration(video.duration)} 
+                      {video.codec && ` • ${video.codec}`}
+                    </p>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => toggleFavorite(video)}
+                      className={`p-2 rounded-lg hover:bg-gray-100 text-xl ${favorites.has(video.path) ? 'text-yellow-500' : 'text-gray-400'}`}
+                      title={favorites.has(video.path) ? 'Remove from favorites' : 'Add to favorites'}
+                    >
+                      {favorites.has(video.path) ? '★' : '☆'}
+                    </button>
+                    <button
+                      onClick={() => navigate(`/library/play?path=${encodeURIComponent(video.path)}&name=${encodeURIComponent(video.name || video.filename)}&category=${encodeURIComponent(categoryName)}`)}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                    >
+                      ▶ Play
+                    </button>
+                    <button
+                      onClick={() => navigate(`/library/play?path=${encodeURIComponent(video.path)}&name=${encodeURIComponent(video.name || video.filename)}&category=${encodeURIComponent(categoryName)}&workout=true`)}
+                      className="px-4 py-2 border rounded-lg hover:bg-gray-50"
+                    >
+                      📋 Start Workout
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         ))}
@@ -130,4 +156,3 @@ export default function LibraryCategory() {
     </div>
   );
 }
-
