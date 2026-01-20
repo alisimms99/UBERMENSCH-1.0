@@ -356,7 +356,7 @@ function ExerciseCard({ exercise, index }) {
                 className="flex items-center space-x-2 p-2 rounded border hover:bg-accent transition-colors text-left"
                 onClick={() => {
                   // TODO: Open video player
-                  console.log('Play video:', video.path)
+                  // Video playback integration pending
                 }}
               >
                 <Video className="w-4 h-4 text-primary flex-shrink-0" />
