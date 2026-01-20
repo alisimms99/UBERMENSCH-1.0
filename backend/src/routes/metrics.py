@@ -166,3 +166,172 @@ def update_day_metrics():
     
     db.session.commit()
     return jsonify(metrics.to_dict())
+
+@metrics_bp.route('/progress/analytics', methods=['GET'])
+def get_progress_analytics():
+    """Get aggregated progress analytics for a user over a time period"""
+    user_id = request.args.get('user_id', 1, type=int)
+    days = request.args.get('days', 30, type=int)
+    
+    # Calculate date range
+    end_date = datetime.utcnow()
+    start_date = end_date - timedelta(days=days)
+    
+    # Get all completed video sessions in the time period
+    sessions = VideoSession.query.filter(
+        VideoSession.user_id == user_id,
+        VideoSession.started_at >= start_date,
+        VideoSession.started_at <= end_date,
+        VideoSession.completed == True
+    ).order_by(VideoSession.started_at).all()
+    
+    # Calculate total workout time
+    total_minutes = sum(s.duration_seconds for s in sessions) // 60
+    total_sessions = len(sessions)
+    
+    # Category breakdown - sum seconds first to avoid undercounting
+    category_stats = {}
+    for session in sessions:
+        cat = session.category or 'Uncategorized'
+        if cat not in category_stats:
+            category_stats[cat] = {'count': 0, 'seconds': 0}
+        category_stats[cat]['count'] += 1
+        category_stats[cat]['seconds'] += session.duration_seconds
+    
+    # Convert seconds to minutes after aggregation
+    for cat in category_stats:
+        category_stats[cat]['minutes'] = category_stats[cat]['seconds'] // 60
+        del category_stats[cat]['seconds']
+    
+    # Calculate streaks
+    streaks = calculate_streaks(user_id, sessions)
+    
+    # Daily workout data for charts - sum seconds first to avoid undercounting
+    daily_data = {}
+    for session in sessions:
+        date_key = session.started_at.date().isoformat()
+        if date_key not in daily_data:
+            daily_data[date_key] = {'count': 0, 'seconds': 0, 'categories': set()}
+        daily_data[date_key]['count'] += 1
+        daily_data[date_key]['seconds'] += session.duration_seconds
+        if session.category:
+            daily_data[date_key]['categories'].add(session.category)
+    
+    # Convert to list format for charts (convert seconds to minutes after aggregation)
+    daily_workout_data = [
+        [date, data['seconds'] // 60]
+        for date, data in sorted(daily_data.items())
+    ]
+    
+    # Weekly summary
+    weeks_data = calculate_weekly_summary(sessions, start_date, end_date)
+    
+    return jsonify({
+        'period_days': days,
+        'start_date': start_date.date().isoformat(),
+        'end_date': end_date.date().isoformat(),
+        'total_sessions': total_sessions,
+        'total_minutes': total_minutes,
+        'avg_session_duration': total_minutes // total_sessions if total_sessions > 0 else 0,
+        'category_breakdown': category_stats,
+        'current_streaks': streaks,
+        'daily_workout_data': daily_workout_data,
+        'weekly_summary': weeks_data
+    })
+
+def calculate_streaks(user_id, sessions):
+    """Calculate current workout streaks"""
+    if not sessions:
+        return {'workout': 0, 'qigong': 0}
+    
+    # Get all sessions ordered by date
+    all_sessions = VideoSession.query.filter(
+        VideoSession.user_id == user_id,
+        VideoSession.completed == True
+    ).order_by(VideoSession.started_at.desc()).all()
+    
+    if not all_sessions:
+        return {'workout': 0, 'qigong': 0}
+    
+    # Calculate overall workout streak
+    workout_streak = 0
+    current_date = datetime.utcnow().date()
+    
+    # Group sessions by date
+    sessions_by_date = {}
+    for session in all_sessions:
+        date = session.started_at.date()
+        if date not in sessions_by_date:
+            sessions_by_date[date] = []
+        sessions_by_date[date].append(session)
+    
+    # Check if there's a session today or yesterday (to start the streak)
+    yesterday = current_date - timedelta(days=1)
+    if current_date not in sessions_by_date and yesterday not in sessions_by_date:
+        return {'workout': 0, 'qigong': 0}
+    
+    # Start from today or yesterday
+    check_date = current_date if current_date in sessions_by_date else yesterday
+    
+    # Count consecutive days with workouts
+    while check_date in sessions_by_date:
+        workout_streak += 1
+        check_date -= timedelta(days=1)
+    
+    # Calculate qigong-specific streak
+    qigong_streak = 0
+    check_date = current_date if current_date in sessions_by_date else yesterday
+    
+    while check_date in sessions_by_date:
+        # Check if any session on this day is qigong-related
+        has_qigong = any(
+            'qigong' in (s.category or '').lower() or 
+            'chi gong' in (s.category or '').lower() or
+            'tai chi' in (s.category or '').lower()
+            for s in sessions_by_date[check_date]
+        )
+        if has_qigong:
+            qigong_streak += 1
+            check_date -= timedelta(days=1)
+        else:
+            break
+    
+    return {
+        'workout': workout_streak,
+        'qigong': qigong_streak
+    }
+
+def calculate_weekly_summary(sessions, start_date, end_date):
+    """Calculate weekly workout summaries"""
+    weeks = {}
+    
+    for session in sessions:
+        # Get the week number
+        week_start = session.started_at.date() - timedelta(days=session.started_at.weekday())
+        week_key = week_start.isoformat()
+        
+        if week_key not in weeks:
+            weeks[week_key] = {
+                'week_start': week_key,
+                'sessions': 0,
+                'minutes': 0,
+                'categories': set()
+            }
+        
+        weeks[week_key]['sessions'] += 1
+        weeks[week_key]['minutes'] += session.duration_seconds
+        if session.category:
+            weeks[week_key]['categories'].add(session.category)
+    
+    # Convert to list and format (convert seconds to minutes after aggregation)
+    weekly_data = []
+    for week_key in sorted(weeks.keys()):
+        week = weeks[week_key]
+        weekly_data.append({
+            'week_start': week['week_start'],
+            'sessions': week['sessions'],
+            'minutes': week['minutes'] // 60,
+            'categories': list(week['categories'])
+        })
+    
+    return weekly_data
