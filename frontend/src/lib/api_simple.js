@@ -196,18 +196,12 @@ class ApiService {
   }
 
   async getUserAchievements(userId) {
-    return [
-      {
-        id: 1,
-        achievement: {
-          name: 'First Steps',
-          description: 'Completed your first workout',
-          badge_icon: '🎯',
-          xp_reward: 100
-        },
-        earned_at: new Date().toISOString()
-      }
-    ]
+    try {
+      return await this.request(`/progress/users/${userId}/achievements`, { method: 'GET' })
+    } catch (error) {
+      console.error('Failed to fetch user achievements:', error)
+      return []
+    }
   }
 
   async seedExercises() { return true }
@@ -233,39 +227,20 @@ class ApiService {
   }
 
   async getProgressAnalytics(userId, days) {
-    return {
-      period_days: days,
-      total_entries: 10,
-      analytics: {
-        total_steps: 50000,
-        total_walking_loops: 18,
-        avg_daily_steps: 5000,
-        step_goal_achievement_rate: 60,
-        days_met_step_goal: 6,
-        current_streaks: {
-          qigong: 5,
-          workout: 3,
-          walking: 7
-        },
-        max_pushups_progression: [
-          ['2024-01-01', 5],
-          ['2024-01-15', 8],
-          ['2024-01-30', 12]
-        ],
-        max_situps_progression: [
-          ['2024-01-01', 3],
-          ['2024-01-15', 6],
-          ['2024-01-30', 10]
-        ],
-        plank_duration_progression: [
-          ['2024-01-01', 30],
-          ['2024-01-15', 45],
-          ['2024-01-30', 60]
-        ],
-        daily_steps_data: Array.from({ length: 30 }, (_, i) => [
-          new Date(Date.now() - (29 - i) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          Math.floor(Math.random() * 8000) + 2000
-        ])
+    try {
+      return await this.request(`/metrics/progress/analytics?user_id=${userId}&days=${days}`, { method: 'GET' })
+    } catch (error) {
+      console.error('Failed to fetch progress analytics:', error)
+      // Return empty analytics on error
+      return {
+        period_days: days,
+        total_sessions: 0,
+        total_minutes: 0,
+        avg_session_duration: 0,
+        category_breakdown: {},
+        current_streaks: { workout: 0, qigong: 0 },
+        daily_workout_data: [],
+        weekly_summary: []
       }
     }
   }
