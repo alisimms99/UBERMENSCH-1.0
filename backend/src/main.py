@@ -30,6 +30,8 @@ def create_app():
     from .routes.diary import diary_bp
     from .routes.library import library_bp
     from .routes.ai_trainer import ai_trainer_bp
+    from .routes.ai_supplements import ai_supplements_bp
+    from .routes.ai_nutrition import ai_nutrition_bp
     
     # Register blueprints
     app.register_blueprint(user_bp, url_prefix='/api')
@@ -44,6 +46,8 @@ def create_app():
     app.register_blueprint(diary_bp, url_prefix='/api/diary')
     app.register_blueprint(library_bp, url_prefix='/api')
     app.register_blueprint(ai_trainer_bp, url_prefix='/api')
+    app.register_blueprint(ai_supplements_bp, url_prefix='/api')
+    app.register_blueprint(ai_nutrition_bp, url_prefix='/api')
     
     # Initialize CORS once with permissive policy (after blueprints are registered)
     CORS(app, resources={r"/*": {"origins": "*"}})
