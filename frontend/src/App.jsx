@@ -14,6 +14,7 @@ import Navigation from './components/Navigation'
 import Library from './pages/Library'
 import LibraryCategory from './pages/LibraryCategory'
 import LibraryPlayer from './pages/LibraryPlayer'
+import AITrainer from './pages/AITrainer'
 
 // API service
 import { apiService } from './lib/api'
@@ -176,6 +177,14 @@ function App() {
             <Route
               path="/library/play"
               element={<LibraryPlayer />}
+            />
+            <Route
+              path="/ai-trainer"
+              element={
+                <MainLayout user={user} darkMode={darkMode} toggleDarkMode={toggleDarkMode}>
+                  <AITrainer user={user} />
+                </MainLayout>
+              }
             />
           </Routes>
         </AnimatePresence>
