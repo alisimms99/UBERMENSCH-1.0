@@ -15,6 +15,8 @@ import Library from './pages/Library'
 import LibraryCategory from './pages/LibraryCategory'
 import LibraryPlayer from './pages/LibraryPlayer'
 import AITrainer from './pages/AITrainer'
+import SupplementAdvisor from './pages/SupplementAdvisor'
+import NutritionCoach from './pages/NutritionCoach'
 
 // API service
 import { apiService } from './lib/api'
@@ -183,6 +185,22 @@ function App() {
               element={
                 <MainLayout user={user} darkMode={darkMode} toggleDarkMode={toggleDarkMode}>
                   <AITrainer user={user} />
+                </MainLayout>
+              }
+            />
+            <Route
+              path="/supplements-advisor"
+              element={
+                <MainLayout user={user} darkMode={darkMode} toggleDarkMode={toggleDarkMode}>
+                  <SupplementAdvisor user={user} />
+                </MainLayout>
+              }
+            />
+            <Route
+              path="/nutrition-coach"
+              element={
+                <MainLayout user={user} darkMode={darkMode} toggleDarkMode={toggleDarkMode}>
+                  <NutritionCoach user={user} />
                 </MainLayout>
               }
             />

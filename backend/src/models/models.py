@@ -563,3 +563,77 @@ class TrainerSession(db.Model):
             'actual_duration': self.actual_duration,
             'notes': self.notes
         }
+
+
+class SupplementAdvisorSession(db.Model):
+    """Track Supplement Advisor AI sessions"""
+    __tablename__ = 'supplement_advisor_sessions'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    query_type = db.Column(db.String(50))  # "analyze", "protocol", "interaction"
+    input_json = db.Column(db.Text)
+    response_json = db.Column(db.Text)
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'query_type': self.query_type,
+            'input': json.loads(self.input_json) if self.input_json else None,
+            'response': json.loads(self.response_json) if self.response_json else None
+        }
+
+class NutritionCoachSession(db.Model):
+    """Track Nutrition Coach AI sessions"""
+    __tablename__ = 'nutrition_coach_sessions'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    query_type = db.Column(db.String(50))  # "meal", "plan", "analyze"
+    input_json = db.Column(db.Text)
+    response_json = db.Column(db.Text)
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'query_type': self.query_type,
+            'input': json.loads(self.input_json) if self.input_json else None,
+            'response': json.loads(self.response_json) if self.response_json else None
+        }
+
+class MealLog(db.Model):
+    """Log meals for nutrition tracking"""
+    __tablename__ = 'meal_logs'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    logged_at = db.Column(db.DateTime, default=datetime.utcnow)
+    meal_type = db.Column(db.String(20))  # breakfast, lunch, dinner, snack
+    description = db.Column(db.Text)
+    estimated_calories = db.Column(db.Integer)
+    estimated_protein = db.Column(db.Integer)
+    estimated_carbs = db.Column(db.Integer)
+    estimated_fat = db.Column(db.Integer)
+    ai_feedback = db.Column(db.Text)
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'logged_at': self.logged_at.isoformat() if self.logged_at else None,
+            'meal_type': self.meal_type,
+            'description': self.description,
+            'estimated_macros': {
+                'calories': self.estimated_calories,
+                'protein': self.estimated_protein,
+                'carbs': self.estimated_carbs,
+                'fat': self.estimated_fat
+            },
+            'ai_feedback': self.ai_feedback
+        }
