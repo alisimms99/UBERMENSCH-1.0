@@ -189,32 +189,37 @@ def get_progress_analytics():
     total_minutes = sum(s.duration_seconds for s in sessions) // 60
     total_sessions = len(sessions)
     
-    # Category breakdown
+    # Category breakdown - sum seconds first to avoid undercounting
     category_stats = {}
     for session in sessions:
         cat = session.category or 'Uncategorized'
         if cat not in category_stats:
-            category_stats[cat] = {'count': 0, 'minutes': 0}
+            category_stats[cat] = {'count': 0, 'seconds': 0}
         category_stats[cat]['count'] += 1
-        category_stats[cat]['minutes'] += session.duration_seconds // 60
+        category_stats[cat]['seconds'] += session.duration_seconds
+    
+    # Convert seconds to minutes after aggregation
+    for cat in category_stats:
+        category_stats[cat]['minutes'] = category_stats[cat]['seconds'] // 60
+        del category_stats[cat]['seconds']
     
     # Calculate streaks
     streaks = calculate_streaks(user_id, sessions)
     
-    # Daily workout data for charts
+    # Daily workout data for charts - sum seconds first to avoid undercounting
     daily_data = {}
     for session in sessions:
         date_key = session.started_at.date().isoformat()
         if date_key not in daily_data:
-            daily_data[date_key] = {'count': 0, 'minutes': 0, 'categories': set()}
+            daily_data[date_key] = {'count': 0, 'seconds': 0, 'categories': set()}
         daily_data[date_key]['count'] += 1
-        daily_data[date_key]['minutes'] += session.duration_seconds // 60
+        daily_data[date_key]['seconds'] += session.duration_seconds
         if session.category:
             daily_data[date_key]['categories'].add(session.category)
     
-    # Convert to list format for charts
+    # Convert to list format for charts (convert seconds to minutes after aggregation)
     daily_workout_data = [
-        [date, data['minutes']]
+        [date, data['seconds'] // 60]
         for date, data in sorted(daily_data.items())
     ]
     
@@ -314,18 +319,18 @@ def calculate_weekly_summary(sessions, start_date, end_date):
             }
         
         weeks[week_key]['sessions'] += 1
-        weeks[week_key]['minutes'] += session.duration_seconds // 60
+        weeks[week_key]['minutes'] += session.duration_seconds
         if session.category:
             weeks[week_key]['categories'].add(session.category)
     
-    # Convert to list and format
+    # Convert to list and format (convert seconds to minutes after aggregation)
     weekly_data = []
     for week_key in sorted(weeks.keys()):
         week = weeks[week_key]
         weekly_data.append({
             'week_start': week['week_start'],
             'sessions': week['sessions'],
-            'minutes': week['minutes'],
+            'minutes': week['minutes'] // 60,
             'categories': list(week['categories'])
         })
     
