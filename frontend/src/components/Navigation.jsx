@@ -10,7 +10,8 @@ import {
   Sun,
   Menu,
   X,
-  Film
+  Film,
+  Sparkles
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -20,6 +21,7 @@ export default function Navigation({ user, darkMode, toggleDarkMode }) {
 
   const navItems = [
     { path: '/dashboard', icon: Home, label: 'Dashboard' },
+    { path: '/ai-trainer', icon: Sparkles, label: 'AI Trainer' },
     { path: '/workout', icon: Dumbbell, label: 'Workout' },
     { path: '/library', icon: Film, label: 'Library' },
     { path: '/progress', icon: TrendingUp, label: 'Progress' },

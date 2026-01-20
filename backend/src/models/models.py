@@ -532,3 +532,34 @@ class VideoFavorite(db.Model):
             'category': self.category,
             'added_at': self.added_at.isoformat() if self.added_at else None
         }
+
+class TrainerSession(db.Model):
+    """Track AI-generated workout sessions for memory and adaptation"""
+    __tablename__ = 'trainer_sessions'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    generated_at = db.Column(db.DateTime, default=datetime.utcnow)
+    workout_json = db.Column(db.Text, nullable=False)  # Store the full workout JSON
+    time_requested = db.Column(db.Integer)  # Minutes requested
+    energy_level = db.Column(db.Integer)  # 1-5
+    focus = db.Column(db.String(50))  # cardio, strength, flexibility, recovery, etc.
+    completed = db.Column(db.Boolean, default=False)
+    feedback = db.Column(db.String(50))  # "too easy", "too hard", "just right"
+    actual_duration = db.Column(db.Integer)  # Actual minutes taken
+    notes = db.Column(db.Text)
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'generated_at': self.generated_at.isoformat() if self.generated_at else None,
+            'workout': json.loads(self.workout_json) if self.workout_json else None,
+            'time_requested': self.time_requested,
+            'energy_level': self.energy_level,
+            'focus': self.focus,
+            'completed': self.completed,
+            'feedback': self.feedback,
+            'actual_duration': self.actual_duration,
+            'notes': self.notes
+        }
