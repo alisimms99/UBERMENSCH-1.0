@@ -81,6 +81,29 @@ def get_category_videos(category_name):
         'videos': category_videos
     })
 
+@library_bp.route('/library/search', methods=['GET'])
+def search_videos():
+    """Search videos by name, category, or instructor"""
+    query = request.args.get('q', '').lower().strip()
+    
+    if not query:
+        return jsonify({'videos': []})
+    
+    index = load_video_index()
+    videos = index.get('videos', [])
+    
+    # Search in searchable field (which includes filename, path, category, subcategory)
+    matching_videos = [
+        video for video in videos
+        if query in video.get('searchable', '').lower()
+    ]
+    
+    # Limit results to 100 for performance
+    return jsonify({
+        'query': query,
+        'videos': matching_videos[:100]
+    })
+
 @library_bp.route('/library/sessions', methods=['POST'])
 def start_session():
     """Start a video workout session"""
