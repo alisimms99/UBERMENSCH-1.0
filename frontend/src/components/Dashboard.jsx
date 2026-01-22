@@ -13,7 +13,8 @@ import {
   Clock,
   Plus,
   ChevronRight,
-  Video
+  Video,
+  Zap
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -37,7 +38,8 @@ export default function Dashboard({ user }) {
   const [templates, setTemplates] = useState([])
   const [templatesLoading, setTemplatesLoading] = useState(true)
   const [templatesError, setTemplatesError] = useState(null)
-  const [videoSessions, setVideoSessions] = useState({ count: 0, total_minutes: 0, categories: [] })
+  const [videoSessions, setVideoSessions] = useState({ count: 0, total_minutes: 0, categories: [], extra_effort: false })
+  const [extraEffort, setExtraEffort] = useState(false)
 
   useEffect(() => {
     if (!user?.id) return
@@ -75,12 +77,15 @@ export default function Dashboard({ user }) {
       const achievements = await apiService.getUserAchievements(user.id)
       setRecentAchievements(achievements.slice(-3)) // Last 3 achievements
 
-      // Load today's video sessions from daily metrics
+      // Load today's video sessions and extra effort status from daily metrics
       try {
         const today = new Date().toISOString().split('T')[0]
         const dailyMetrics = await apiService.getDailyMetrics(today, user.id)
         if (dailyMetrics?.video_sessions) {
           setVideoSessions(dailyMetrics.video_sessions)
+        }
+        if (dailyMetrics?.extra_effort) {
+          setExtraEffort(dailyMetrics.extra_effort)
         }
       } catch (error) {
         console.error('Failed to load video sessions:', error)
@@ -251,19 +256,36 @@ export default function Dashboard({ user }) {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5 }}
         >
-          <Card>
+          <Card className={extraEffort ? 'ring-2 ring-yellow-500/50' : ''}>
             <CardContent className="p-6">
               <div className="flex items-center space-x-4">
-                <div className="w-12 h-12 bg-red-500/10 rounded-lg flex items-center justify-center">
-                  <Video className="w-6 h-6 text-red-500" />
+                <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${extraEffort ? 'bg-yellow-500/10' : 'bg-red-500/10'}`}>
+                  {extraEffort ? (
+                    <Zap className="w-6 h-6 text-yellow-500" />
+                  ) : (
+                    <Video className="w-6 h-6 text-red-500" />
+                  )}
                 </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Video Workouts</p>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm text-muted-foreground">Video Workouts</p>
+                    {extraEffort && (
+                      <Badge variant="secondary" className="bg-yellow-500/20 text-yellow-600 text-xs">
+                        Extra Effort
+                      </Badge>
+                    )}
+                  </div>
                   <p className="text-2xl font-bold text-foreground">
                     {videoSessions.total_minutes > 0
                       ? `${videoSessions.total_minutes} min`
                       : `${videoSessions.count} sessions`}
                   </p>
+                  {videoSessions.categories?.length > 0 && (
+                    <p className="text-xs text-muted-foreground mt-1 truncate">
+                      {videoSessions.categories.slice(0, 2).join(', ')}
+                      {videoSessions.categories.length > 2 && ` +${videoSessions.categories.length - 2}`}
+                    </p>
+                  )}
                 </div>
               </div>
             </CardContent>

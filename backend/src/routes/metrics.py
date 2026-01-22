@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from ..models.models import db, DailyMetrics, VideoSession
+from ..models.models import db, DailyMetrics, VideoSession, WorkoutSession
 from datetime import datetime, timedelta
 import json
 
@@ -27,10 +27,22 @@ def get_daily_metrics(date_str):
     ).all()
 
     completed_sessions = [s for s in video_sessions if s.completed]
+
+    # Check for completed scheduled workouts on this day (for "Extra Effort" indicator)
+    scheduled_workouts_completed = WorkoutSession.query.filter(
+        WorkoutSession.user_id == user_id,
+        WorkoutSession.date == target_date,
+        WorkoutSession.status == 'completed'
+    ).count()
+
+    # Extra effort = user did both a scheduled workout AND video workout(s)
+    extra_effort = scheduled_workouts_completed > 0 and len(completed_sessions) > 0
+
     video_summary = {
         'count': len(completed_sessions),
         'total_minutes': sum(s.duration_seconds for s in completed_sessions) // 60,
-        'categories': list(set(s.category for s in completed_sessions if s.category))
+        'categories': list(set(s.category for s in completed_sessions if s.category)),
+        'extra_effort': extra_effort
     }
 
     if not metrics:
@@ -65,11 +77,13 @@ def get_daily_metrics(date_str):
                 'bowel_movements': None,
                 'supplements_taken': False
             },
-            'video_sessions': video_summary
+            'video_sessions': video_summary,
+            'extra_effort': extra_effort
         })
 
     result = metrics.to_dict()
     result['video_sessions'] = video_summary
+    result['extra_effort'] = extra_effort
     return jsonify(result)
 
 @metrics_bp.route('/morning', methods=['POST'])

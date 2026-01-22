@@ -5,12 +5,15 @@ import { Slider } from '@/components/ui/slider'
 import { Textarea } from '@/components/ui/textarea'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Label } from '@/components/ui/label'
-import { Sun, Moon } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { Sun, Moon, Video, Zap, Clock } from 'lucide-react'
 import { apiService } from '../lib/api'
 
 export default function DailyMetrics({ user }) {
     const [metrics, setMetrics] = useState(null)
     const [loading, setLoading] = useState(true)
+    const [videoSessions, setVideoSessions] = useState({ count: 0, total_minutes: 0, categories: [] })
+    const [extraEffort, setExtraEffort] = useState(false)
 
     // Morning Form State
     const [morningForm, setMorningForm] = useState({
@@ -46,6 +49,8 @@ export default function DailyMetrics({ user }) {
                 setMetrics(data)
                 if (data.morning?.wake_time) setMorningForm(prev => ({ ...prev, ...data.morning }))
                 if (data.evening?.energy_level) setEveningForm(prev => ({ ...prev, ...data.evening }))
+                if (data.video_sessions) setVideoSessions(data.video_sessions)
+                if (data.extra_effort) setExtraEffort(data.extra_effort)
             }
         } catch (error) {
             console.error("Failed to load metrics:", error)
@@ -101,10 +106,46 @@ export default function DailyMetrics({ user }) {
     return (
         <Card className="h-full">
             <CardHeader>
-                <CardTitle>Daily Check-in</CardTitle>
-                <CardDescription>Monitor your vitals and mindset</CardDescription>
+                <div className="flex items-center justify-between">
+                    <div>
+                        <CardTitle>Daily Check-in</CardTitle>
+                        <CardDescription>Monitor your vitals and mindset</CardDescription>
+                    </div>
+                    {extraEffort && (
+                        <Badge variant="secondary" className="bg-yellow-500/20 text-yellow-600">
+                            <Zap className="w-3 h-3 mr-1" />
+                            Extra Effort
+                        </Badge>
+                    )}
+                </div>
             </CardHeader>
             <CardContent>
+                {/* Video Sessions Summary */}
+                {(videoSessions.count > 0 || videoSessions.total_minutes > 0) && (
+                    <div className="mb-4 p-3 bg-muted/50 rounded-lg">
+                        <div className="flex items-center gap-2 mb-2">
+                            <Video className="w-4 h-4 text-red-500" />
+                            <span className="text-sm font-medium">Today's Video Workouts</span>
+                        </div>
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                            <span className="flex items-center gap-1">
+                                <Clock className="w-3 h-3" />
+                                {videoSessions.total_minutes} min
+                            </span>
+                            <span>{videoSessions.count} session{videoSessions.count !== 1 ? 's' : ''}</span>
+                        </div>
+                        {videoSessions.categories?.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-2">
+                                {videoSessions.categories.map((cat, idx) => (
+                                    <Badge key={idx} variant="outline" className="text-xs">
+                                        {cat}
+                                    </Badge>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )}
+
                 <Tabs defaultValue="morning">
                     <TabsList className="grid w-full grid-cols-2">
                         <TabsTrigger value="morning"><Sun className="w-4 h-4 mr-2" /> Morning</TabsTrigger>

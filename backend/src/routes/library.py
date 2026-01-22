@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify, request
 from datetime import datetime
 from sqlalchemy.exc import IntegrityError
-from ..models import db, VideoSession, VideoFavorite
+from ..models import db, VideoSession, VideoFavorite, DailyMetrics
 import json
 import os
 
@@ -124,15 +124,33 @@ def start_session():
 
 @library_bp.route('/library/sessions/<int:session_id>/complete', methods=['POST'])
 def complete_session(session_id):
-    """Mark a video session as complete"""
+    """Mark a video session as complete and update daily metrics"""
     data = request.get_json()
     session = VideoSession.query.get_or_404(session_id)
-    
+
     session.ended_at = datetime.utcnow()
     session.completed = True
     session.duration_seconds = data.get('duration_seconds', 0)
     session.notes = data.get('notes', '')
-    
+
+    # Auto-update DailyMetrics movement_minutes
+    # Use session's start date (not today) for edge case where session spans midnight
+    session_date = session.started_at.date() if session.started_at else datetime.utcnow().date()
+
+    daily_metrics = DailyMetrics.query.filter_by(
+        user_id=session.user_id,
+        date=session_date
+    ).first()
+
+    if not daily_metrics:
+        daily_metrics = DailyMetrics(user_id=session.user_id, date=session_date)
+        db.session.add(daily_metrics)
+
+    # Add video session duration to movement_minutes
+    current_movement = daily_metrics.movement_minutes or 0
+    video_minutes = session.duration_seconds // 60
+    daily_metrics.movement_minutes = current_movement + video_minutes
+
     db.session.commit()
     return jsonify(session.to_dict())
 
